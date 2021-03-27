@@ -13,7 +13,7 @@ from robotManager import RobotManager
 settings_set={}
 
 #This on works with the fake servos included in the directory
-#"""
+"""
 port_list={'port_1','port_2'}
 settings={
     'baudrate': 100,
@@ -35,7 +35,7 @@ settings={
     'diagnosticsRate' : 1
 }
 settings_set['ttyUSB0']=settings
-"""
+#"""
 
 
 ze_manager=RobotManager(port_list,settings_set)

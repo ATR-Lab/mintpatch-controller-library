@@ -21,8 +21,8 @@ class PortManager:
     on completion, the PortManager, SerialProxy, and Wrapper will function.
     """
     def __init__(self,_port_name, _setup_info):
-	rospy.init_node('portManager', anonymous=True)
-        self.port_name=_port_name
+        self.port_name = _port_name
+        rospy.init_node('portManager', anonymous=True)
         self.wrapper=SDKSerialWrapper('/dev/{_port_name}'.format(_port_name=_port_name),_setup_info["baudrate"])
         self.proxy=DynomixSerialProxy("/dev/{_port_name}".format(_port_name=_port_name),_port_name, _setup_info["baudrate"],_setup_info["minID"],_setup_info["maxID"],_setup_info["updateRate"],_setup_info["diagnosticsRate"])
         self.proxy.connect()
