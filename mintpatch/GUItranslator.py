@@ -41,7 +41,19 @@ class GUITranslator:
                 break
         #necessary information is stored in the class
     
+    def stop_motor(self,motor_name):
+        raise NotImplementedError
 
+    def update_motor(self, motor_name):
+        #should check to make sure the motor is attached
+        feedback={}
+        #print(motor_name[:-2])
+        #print(motor_name[-1:])
+        feedback=self.manager.ports_by_name[motor_name[:-2]].wrapper.get_feedback(motor_name[-1:])
+        feedback['id']=motor_name
+        self.print_from_dict(feedback)
+        #print(feedback)
+        
     #a function for updating the all the information on every servo motor.
     #TODO: Should be ready to go; attempt with real servos.
     def update_all(self):
@@ -68,9 +80,37 @@ class GUITranslator:
             """
             if l==0:
                 continue #I'm sorry my teachers
+
+            if cinar[0]=="stop":
+                if l==1:
+                    for motor in self.running_motors:
+                       self.manager.ports_by_name[motor[:-2]].wrapper.set_goal_velocity(motor[-1:],0)
+                       self.running_motors.remove(motor)
+                else:
+                    if l!=2:
+                        continue
+                    self.manager.ports_by_name[cinar[1][:-2]].wrapper.set_goal_velocity(cinar[1][-1:],0)
+                    self.running_motors.remove(cinar[1])
+
+            if cinar[0]=="move":
+                if l!=3:
+                    continue
+                self.manager.ports_by_name[cinar[1][:-2]].wrapper.set_goal_velocity(cinar[1][-1:],int(cinar[2]))
+                #print("send move command for servo {sid} on port {pid} with speed {spd}".format(sid=cinar[1][-1:],pid=cinar[1][:-2],spd=cinar[2]))
+                self.running_motors.append(cinar[1])
+
+
+            
             if cinar[0]=="update":
-               if l==1: 
+                if l==1: 
                    continue
+                self.update_motor(cinar[1])
+
+
+            if cinar[0]=="running":
+                for motor in self.running_motors:
+                    self.update_motor(motor)
+            
             if cinar[0]=="list":
                 for string in self.manager.list_servos():
                     print(string)
