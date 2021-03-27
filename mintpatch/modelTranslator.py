@@ -10,6 +10,7 @@
         #port_1_1, Test_Motor_1, 
     #port2:
 
+import time
 
 
 
@@ -78,9 +79,36 @@ class FakeMotor:
         self.temperature=_temperature
         self.angle=_angle
         self.speed=_speed
+        self.goal_speed=0
+        self.start_time=0
+        self.moving=False
+        self.last_check=0
     def changeName(self, new_name):
         self.name=new_name
-    
+    def set_goal_speed(self, new_speed):
+        #print("into fake servo move")
+        if new_speed==0:
+            self.goal_speed=0
+            self.speed=0
+            self.moving=False
+        else:
+            self.goal_speed=new_speed
+            self.start_time=time.time()
+            self.moving=True
+            self.last_check=self.start_time
+    def check_while_running(self):
+        moment=time.time()
+        tchange=moment-self.start_time
+        if tchange>15:
+            self.speed=self.goal_speed
+        else:
+            self.speed=self.goal_speed/(15-tchange)
+        self.angle=self.angle+(self.speed*6)*tchange
+        while self.angle>360:
+            self.angle=self.angle-360
+        if self.moving==False:
+            self.speed=0
+
 
 #just starts up the translator
 """
