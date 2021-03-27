@@ -12,6 +12,7 @@ Nathan Moder
 # Real Motors
 from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
 from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
+import rospy
 
 class PortManager:
     """
