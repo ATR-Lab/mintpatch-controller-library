@@ -5,11 +5,13 @@ Nathan Moder
 3/23/2021
 """
 
-#TODO
-#MARCUS: change these to import the proper files
-#TODO
-from fakeWrapper import SDKSerialWrapper
-from fakeProxy import DynomixSerialProxy
+# Emulated Motors
+# from fakeWrapper import SDKSerialWrapper
+# from fakeProxy import DynomixSerialProxy
+
+# Real Motors
+from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
+from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
 
 class PortManager:
     """
@@ -18,6 +20,7 @@ class PortManager:
     on completion, the PortManager, SerialProxy, and Wrapper will function.
     """
     def __init__(self,_port_name, _setup_info):
+	rospy.init_node('portManager', anonymous=True)
         self.port_name=_port_name
         self.wrapper=SDKSerialWrapper('/dev/{_port_name}'.format(_port_name=_port_name),_setup_info["baudrate"])
         self.proxy=DynomixSerialProxy("/dev/{_port_name}".format(_port_name=_port_name),_port_name, _setup_info["baudrate"],_setup_info["minID"],_setup_info["maxID"],_setup_info["updateRate"],_setup_info["diagnosticsRate"])
