@@ -54,6 +54,8 @@ class RobotManager:
                 self.servo_list.append((portn, servo))
                     #Stores a pair of values in the servo_list.
                         #We want it to seperately track the port and servo ID for later ease.
+        #debug print
+        #print(self.servo_list)
 
 
 
@@ -69,7 +71,7 @@ class RobotManager:
 
         for pair in self.servo_list:
         
-            if pair[0]==pname and pair[1]==sid:
+            if pair[0]==pname and pair[1]==int(sid):
                 found=True
             #As this is a pair of port name and servo ID, we check both to see
             #if we found our matching servo.
@@ -126,4 +128,3 @@ class RobotManager:
     #Returns an array of the names of every port.
     def list_ports(self):
         return self.port_names
-
