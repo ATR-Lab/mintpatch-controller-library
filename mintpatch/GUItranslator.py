@@ -3,7 +3,7 @@ Responsible for communication between the GUI and library.
 Currently reads from JSON and outputs to consule.
 Legacy version uses a python consule.
 Nathan Moder
-3/28/2021
+3/29/2021
 """
 
 #Imports for interaction with Node.js
@@ -33,7 +33,7 @@ class GUITranslator:
         jin=sys.stdin.readline()
             #jin becomes the next line in the JSON file created by the Node.
             #It needs to be translated
-        
+        print(json.loads(jin))
         return json.loads(jin)
             #loads() does the translation
 
@@ -123,6 +123,10 @@ class GUITranslator:
         #These values hold the same role as in stop_motor
         pname=servo_name[:-2]
         sid=servo_name[-1:]
+        
+        #debug prints
+        #print(pname)
+        #print(sid)
 
         if self.manager.check_included(pname, sid):
             #We cannot try to access a motor which isn't attached.
@@ -188,6 +192,12 @@ class GUITranslator:
             Consule
             """
             #conin=input()
+            #or:
+            #conin=sys.stdin.readline()
+
+            """
+            Input Setup
+            """
 
             cinar=conin.split()
                 #Since it's a string, and the parts of the input should be seperated
