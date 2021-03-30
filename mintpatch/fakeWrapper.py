@@ -1,10 +1,10 @@
 """
 This is all purely test
 """
-from modelTranslator import FakeMotor
-from modelTranslator import tm1
-from modelTranslator import tm2
-from modelTranslator import tm3
+from emulatedMotor import EmulatedMotor
+from emulatedMotor import tm1
+from emulatedMotor import tm2
+from emulatedMotor import tm3
 
 class SDKSerialWrapper:
     def __init__(self, port, baudrate, feedback_echo=False):
