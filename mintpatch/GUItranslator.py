@@ -62,11 +62,11 @@ class GUITranslator:
     #No returns or output
     def stop_motor(self,servo_name):
 
-        pname=servo_name[:-2]
+        pname=servo_name[:-4]
             #The name of the port is the first part of the string.
                 #We use python string operations to remove the last 2 characters.
 
-        sid=servo_name[-1:]
+        sid=int(servo_name[-3:])
             #The ID of the motor is just the last element.
 
 
@@ -103,8 +103,8 @@ class GUITranslator:
     def move_motor(self, servo_name,speed):
 
         #These values hold the same role as in stop_motor
-        pname=servo_name[:-2]
-        sid=servo_name[-1:]
+        pname=servo_name[:-4]
+        sid=int(servo_name[-3:])
 
         if self.manager.check_included(pname,sid):
             #Trying to move a motor not attached to the system would be just as bad as stopping one
@@ -121,8 +121,8 @@ class GUITranslator:
     def update_motor(self, servo_name):
 
         #These values hold the same role as in stop_motor
-        pname=servo_name[:-2]
-        sid=servo_name[-1:]
+        pname=servo_name[:-4]
+        sid=int(servo_name[-3:])
         
         #debug prints
         #print(pname)
@@ -171,8 +171,8 @@ class GUITranslator:
         """
         LOOP SETUP
         """
-        cont=True
-        while(cont):
+        Continue=True
+        while(Continue):
             #Establishes a common, potentially infinite while loop.
                 #It can be ended by inputing "end".
 
@@ -183,7 +183,7 @@ class GUITranslator:
             """
             Node.js
             """
-            conin=self.read_from_json()
+            #conin=self.read_from_json()
                 #Uses this input function to gather one line from the Node.
                     #This is a string.         
             
@@ -191,7 +191,7 @@ class GUITranslator:
             """
             Consule
             """
-            #conin=input()
+            conin=input()
             #or:
             #conin=sys.stdin.readline()
 
@@ -201,7 +201,7 @@ class GUITranslator:
 
             cinar=conin.split()
                 #Since it's a string, and the parts of the input should be seperated
-                #by spaces, we split this to make it an array.
+                #by spaces; we split this to make it an array.
             
             l=cinar.__len__()
                 #Knowing the length of this string array will
@@ -269,7 +269,7 @@ class GUITranslator:
                 continue
 
             if cinar[0]=="end":
-                cont=False
+                Continue=False
 
         #END LOOP
         print("Thank you for using MintPatch!")
