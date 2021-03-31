@@ -16,7 +16,7 @@ def main():
     settings_set={}
     
     #This one works with the emulated servos included in the directory
-    #"""
+    """
     port_list={'port_1','port_2'}
     settings={
         'baudrate': 100,
@@ -38,7 +38,7 @@ def main():
         'diagnosticsRate' : 1
     }
     settings_set['ttyUSB0']=settings
-    """
+    # """
 
     manager=RobotManager(port_list,settings_set)
     translator=GUITranslator(manager)

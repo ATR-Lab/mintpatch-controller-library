@@ -6,13 +6,13 @@ Nathan Moder & M. Arnett
 """
 
 # Imports for Emulated Motors
-from fakeWrapper import SDKSerialWrapper
-from fakeProxy import DynomixSerialProxy
+# from fakeWrapper import SDKSerialWrapper
+# from fakeProxy import DynomixSerialProxy
 
 # Imports for Real Motors
-#from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
-#from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
-#import rospy
+from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
+from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
+import rospy
 
 class PortManager:
     """
@@ -25,7 +25,7 @@ class PortManager:
         self.port_name = _port_name
             #The port_name refers to the path to the USB port the motors are attached to
 
-        #rospy.init_node('portManager', anonymous=True)  #Initializes a ROS node for this port.
+        rospy.init_node('portManager', anonymous=True)  #Initializes a ROS node for this port.
             #Necessary for the Wrapper and Proxy to work.
         
         self.wrapper=SDKSerialWrapper('/dev/{_port_name}'.format(_port_name=_port_name),_setup_info["baudrate"])

@@ -40,6 +40,14 @@ MOTOR_CONTROL_TABLE = {
     "summary_size": 31 
   },
   "H54_200_S500_R_2": {
+    "present_position": {
+      "address": 611,
+      "size": 4
+    },
+    "angle_limit_summary": {
+      "address": 36,
+      "size": 4
+    },
     "goal_position": {
       "address": 596,
       "size": 4
@@ -56,9 +64,36 @@ MOTOR_CONTROL_TABLE = {
       "address":600,
       "size": 4
     },
-    "summary_size": 31 
+    "present_velocity": {
+      "address": 615,
+      "size": 4
+    },
+    "present_temperature": {
+      "address": 625,
+      "size": 2
+    },
+    "present_current": {
+      "address": 621,
+      "size": 2
+    },
+    "moving": {
+      "address": 610,
+      "size": 2
+    }
   },
   "MX_64_T_2": {
+    "present_position": {
+      "address": 132,
+      "size": 4
+    },
+    "angle_limit_max": {
+      "address": 48,
+      "size": 4
+    },
+    "angle_limit_min": {
+      "address": 52,
+      "size": 4
+    },
     "goal_position": {
       "address": 116,
       "size": 4
@@ -72,10 +107,25 @@ MOTOR_CONTROL_TABLE = {
       "size": None
     },
     "profile_velocity": {
-      "address":112,
+      "address": 112,
       "size": 4
     },
-    "summary_size": 31 
+    "present_velocity": {
+      "address": 128,
+      "size": 4
+    },
+    "present_temperature": {
+      "address": 146,
+      "size": 2
+    },
+    "present_current": {
+      "address": 126,
+      "size": 2
+    },
+    "moving": {
+      "address": 122,
+      "size": 2
+    }
   },
   "XM540_w270_R_2": {
     "goal_position": {
@@ -93,8 +143,7 @@ MOTOR_CONTROL_TABLE = {
     "profile_velocity": {
       "address":112,
       "size": 4
-    },
-    "summary_size": 31 
+    }
   },
   "XL430_w250_T_2": {
     "goal_position": {
@@ -112,8 +161,7 @@ MOTOR_CONTROL_TABLE = {
     "profile_velocity": {
       "address":112,
       "size": 4
-    },
-    "summary_size": 31 
+    }
   }
 }
 

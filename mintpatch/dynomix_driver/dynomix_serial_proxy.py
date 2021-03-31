@@ -1,31 +1,35 @@
-
+# Standard Library imports
 import math
 import sys
 import errno
+import rospy
+
+# Thread / Locking imports
 from collections import deque
 from threading import Thread
 from collections import defaultdict
 
-import rospy
-
-# import roslib
-# roslib.load_manifest('dynamixel_drive')
-
+# Dynamixel Messages import for JointState, DynamixelState, MotorStateList, and MotorState
 from sensor_msgs.msg import JointState
 from dynamixel_msgs.msg import JointState as DynamixelState
 from dynamixel_msgs.msg import MotorStateList
 from dynamixel_msgs.msg import MotorState
 
+# Port and Packet Handler imports
 import dynamixel_sdk.port_handler as port_h
 import dynamixel_sdk.packet_handler as packet_h
-# from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper as sdk_io
+
+# Custom Driver imports
 from dynomix_driver import sdk_serial_wrapper
 from dynomix_tools.dynamixel_control_table import MODEL_NUMBER_2_MOTOR_NAME
 from dynomix_tools import dynamixel_tools
-
 from dynomix_driver import sdk_serial_wrapper
-
 from dynomix_driver.dynamixel_const import *
+
+# Leave here for debugging
+  # import roslib
+  # roslib.load_manifest('dynamixel_drive')
+
 
 class DynomixSerialProxy():
   """
@@ -44,6 +48,7 @@ class DynomixSerialProxy():
     readback_echo=False,
     protocol_version=2.0):
   
+    # Initialize variables for Serial Proxy
     self.port_name          = port_name
     self.port_namespace     = port_namespace
     self.baud_rate          = baud_rate
@@ -63,56 +68,64 @@ class DynomixSerialProxy():
     self.dynotools = dynamixel_tools.DynamixelTools()
     self.sdk_io = sdk_serial_wrapper.SDKSerialWrapper(port_name, baud_rate)
 
+    # Start to publish motor states
     self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size=1)
     #self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticsArray, queue_size=1)
 
+
   def connect(self):
+    """
+    Connects up physical port with the port handler, and initialize packet handler
+    """
     try:
+      # Port and packet handler set up
       self.port_handler   = port_h.PortHandler(self.port_name)
       self.packet_handler = packet_h.PacketHandler(self.protocol_version)
+
+      # Set up port and baud rate
       self.port_handler.openPort()
       self.port_handler.setBaudRate(self.baud_rate)
-
       self.__find_motors()
     except rospy.ROSInterruptException: pass
 
     self.running = True
+
     # TODO: Implement
     if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
     # if self.diagnostics_rate > 0: Thread(target=self.__publish_diagnostic_information).start()
 
+
   def disconnect(self):
+    """
+    Disconnects motors
+    """
     self.running = False
 
 
-  #TODO: IRVIN SWITCH THIS TO USE sdk_serial_wrapper.py
+  # TODO: IRVIN SWITCH THIS TO USE sdk_serial_wrapper.py (I agree, Dr. Kim, Shawn, or whoever
+  #      put this here. -Marcus)
   def __fill_motor_parameters(self, motor_id, model_number):
     """
     Stores some extra information about each motor on the parameter server.
     Some of these paramters are used in joint controller implementation.
     """
 
-
+    # If statements for filling each motor specifically from control table
     if model_number == H54_200_S500_R_MODEL_NUMBER:
-      
+      """
       angle_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_ANGLE_LIMIT_L, H54_200_S500_R_ANGLE_LIMIT_L_LENGTH)
       angle_l = angle_l_res[0][0]
-      rospy.logwarn("DEBUG ANGLE_L: " + str(angle_l_res[0]))
       angle_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_ANGLE_LIMIT_H, H54_200_S500_R_ANGLE_LIMIT_H_LENGTH)
       angle_h = angle_h_res[0][0]
-      rospy.logwarn("DEBUG ANGLE_H: " + str(angle_h_res[0]))
       angles = {'min': angle_l, 'max': angle_h}
+      """
+      
 
-      voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE, H54_200_S500_R_PRESENT_VOLTAGE_LENGTH)
-      voltage = voltage_res[0][0]
-      rospy.logwarn("DEBUG VOLTAGE: " + str(voltage_res[0]))
-      voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_L, H54_200_S500_R_PRESENT_VOLTAGE_L_LENGTH)
-      voltage_l = voltage_l_res[0][0]
-      rospy.logwarn("DEBUG VOLTAGE_L: " + str(voltage_l_res[0]))
-      voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_H, H54_200_S500_R_PRESENT_VOLTAGE_H_LENGTH) 
-      voltage_h = voltage_h_res[0][0]
-      rospy.logwarn("DEBUG VOLTAGE_H H54: " + str(voltage_h_res[0]))
-      voltages = {'min': voltage_l, 'max': voltage_h}
+      # Get the Motor Name
+      model_name = self.dynotools.getModelNameByModelNumber(model_number)
+
+      # TODO: Get Max and Min angles
+      angles = self.sdk_io.get_angle_limits(motor_id, model_name)
     
       rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
       rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
@@ -146,8 +159,6 @@ class DynomixSerialProxy():
       self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
       self.motor_static_info[motor_id]['min_angle'] = angles['min']
       self.motor_static_info[motor_id]['max_angle'] = angles['max']
-      self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
-      self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
 
 
 
@@ -245,8 +256,6 @@ class DynomixSerialProxy():
       # keep some parameters around for diagnostics
       self.motor_static_info[motor_id] = {}
       self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      # self.motor_static_info[motor_id]['firmware'] = self.dxl_io.get_firmware_version(motor_id)
-      # self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
       self.motor_static_info[motor_id]['min_angle'] = angles['min']
       self.motor_static_info[motor_id]['max_angle'] = angles['max']
       self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
@@ -299,13 +308,12 @@ class DynomixSerialProxy():
       # keep some parameters around for diagnostics
       self.motor_static_info[motor_id] = {}
       self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      # self.motor_static_info[motor_id]['firmware'] = self.dxl_io.get_firmware_version(motor_id)
-      # self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
       self.motor_static_info[motor_id]['min_angle'] = angles['min']
       self.motor_static_info[motor_id]['max_angle'] = angles['max']
       self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
       self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
 
+    # Have in here for the purposes of having reference code
     # angles = self.dxl_io.get_angle_limits(motor_id)
     # voltage = self.dxl_io.get_voltage(motor_id)
     # voltages = self.dxl_io.get_voltage_limits(motor_id)
@@ -348,6 +356,10 @@ class DynomixSerialProxy():
 
 
   def __find_motors(self):
+    """
+    Function to add motors into motor container with servo id, model name and model number
+    """
+    # Begin by adding 
     rospy.loginfo('%s: Pinging motor IDs %d through %d...' % (self.port_namespace, self.min_motor_id, self.max_motor_id))
     self.motors = []
     self.motor_static_info = {}
@@ -444,8 +456,8 @@ class DynomixSerialProxy():
       motor_states = []
       for motor_id in self.motors:
         try:
-          state = self.sdk_io.get_feedback(motor_id)      # TODO: IRVIN needs to Update to use new Serial proxy
-          # state = self.get_feedback(motor_id)
+          # state = self.sdk_io.get_feedback(motor_id)      # TODO: IRVIN needs to Update to use new Serial proxy
+          state = self.get_feedback(motor_id)
           if state:
             motor_states.append(MotorState(**state))
             # if dynamixel_io.exception: raise dynamixel_io.exception
@@ -485,7 +497,34 @@ class DynomixSerialProxy():
       Returns the id, goal, position, error, speed, load, voltage, temperature
       and moving values from the specified servo.
       """
+
+    # TODO: multiple packet handler calls for the specificed packets.
+    #       - Build up sdk serial wrapper to read from functions
+    #       - Goal Position, Present Velocity, Present Current,
+    #         Present Temperature, Position Trajectory
+    # TODO: return library of called registers
+      model_number = self.motor_info[str(servo_id)]['model_number']
+      model_name = self.dynotools.getModelNameByModelNumber(model_number)
+      goal = self.sdk_io.get_goal(servo_id, model_name)
+      position = self.sdk_io.get_position(servo_id, model_name)
+      error = position - goal
+      speed = self.sdk_io.get_speed(servo_id, model_name)
+      temperature = self.sdk_io.get_temperature(servo_id, model_name)
+      moving = self.sdk_io.get_moving(servo_id, model_name)
       
+
+      return { 'timestamp': 0,
+          'id': servo_id,
+          'goal': goal,
+          'position': position,
+          'error': error,
+          'speed': speed,
+          'load': 0,
+          'voltage': 0,
+          'temperature': temperature,
+          'moving': bool(moving) }
+
+      """
       model_number = self.motor_info[str(servo_id)]['model_number']
       model_name = self.dynotools.getModelNameByModelNumber(model_number)
       start_address = self.dynotools.getAddressSizeByModel(model_number, 'goal_position')
@@ -630,7 +669,7 @@ class DynomixSerialProxy():
       #     timestamp = response[-1]
 
           # return the data in a dictionary
-
+    """
 if __name__ == '__main__':
   try:
     serial_proxy = DynomixSerialProxy()
