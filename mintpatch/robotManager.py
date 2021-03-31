@@ -71,7 +71,7 @@ class RobotManager:
 
         for pair in self.servo_list:
         
-            if pair[0]==pname and pair[1]==int(sid):
+            if pair[0]==pname and int(pair[1])==int(sid):
                 found=True
             #As this is a pair of port name and servo ID, we check both to see
             #if we found our matching servo.
@@ -82,7 +82,15 @@ class RobotManager:
     def list_servos(self):
         names=[]
         for pair in self.servo_list:
-            names.append('{pname}_{sid}'.format(pname=pair[0],sid=pair[1]))
+            psid=pair[1]
+            sid=''
+            if psid<10:
+                sid='00'+str(psid)
+            elif psid<100:
+                sid='0'+str(psid)
+            else:
+                sid=str(psid)
+            names.append('{pname}_{sid}'.format(pname=pair[0],sid=sid))
         return names
 
     """
@@ -110,8 +118,15 @@ class RobotManager:
                         #From it, it uses get_feedback to obtain a comprehensive
                         #list of dynamic information from the servo.
                             #TODO: Add somewhere a means of obtaining static info as well.
+                sid=''
+                if ids<10:
+                    sid='00'+str(ids)
+                elif ids<100:
+                    sid='0'+str(ids)
+                else:
+                    sid=str(ids)
 
-                temp_dict['id']='{portn}_{id}'.format(portn=portn,id=ids)
+                temp_dict['id']='{portn}_{id}'.format(portn=portn,id=sid)
                     #The ID returned only describes the motor, but we need to
                     #provide the port name for it to be useful to outside systems.
                         #We use the format function to create our new Servo Name:
