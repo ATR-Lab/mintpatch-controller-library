@@ -44,8 +44,12 @@ MOTOR_CONTROL_TABLE = {
       "address": 611,
       "size": 4
     },
-    "angle_limit_summary": {
+    "angle_limit_max": {
       "address": 36,
+      "size": 4
+    },
+    "angle_limit_min": {
+      "address": 40,
       "size": 4
     },
     "goal_position": {
@@ -61,7 +65,7 @@ MOTOR_CONTROL_TABLE = {
       "size": 2
     },
     "profile_velocity": {
-      "address":600,
+      "address": 600,
       "size": 4
     },
     "present_velocity": {

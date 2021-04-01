@@ -113,7 +113,7 @@ class RobotManager:
                     #ids is an integer number that corresponds
                     #to the value in a register on the motor.
 
-                temp_dict=port.wrapper.get_feedback(ids)
+                temp_dict=port.proxy.get_feedback(ids)
                     #Accesses the wrapper held by the port manager.
                         #From it, it uses get_feedback to obtain a comprehensive
                         #list of dynamic information from the servo.

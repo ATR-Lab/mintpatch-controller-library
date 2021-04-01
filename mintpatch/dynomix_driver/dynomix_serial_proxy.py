@@ -30,6 +30,17 @@ from dynomix_driver.dynamixel_const import *
   # import roslib
   # roslib.load_manifest('dynamixel_drive')
 
+# TODO: List of things to change to get 'move()' implemented
+# Main Goal: Get write() working in sdk serial wrapper
+# - Fix size error (write2bytetxonly, or write4bytetxonly)
+# - Add pos_rad_to_raw(self, pos_rad) to Proxy
+# - Add in angle limits (sdk serial wrapper)
+# - Make sure motor parameters are correct
+#   - Get MX64 parameters working
+#   - Get H540 parameters working
+# - Add flipped boolean functionality to Dyno Serial Proxy within fill_motor_paramarters()
+# - Add rad_to_raw() to Proxy
+
 
 class DynomixSerialProxy():
   """
@@ -90,8 +101,10 @@ class DynomixSerialProxy():
 
     self.running = True
 
+    # self.__update_motor_states()
+
     # TODO: Implement
-    if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
+    # if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
     # if self.diagnostics_rate > 0: Thread(target=self.__publish_diagnostic_information).start()
 
 
@@ -120,6 +133,13 @@ class DynomixSerialProxy():
       angles = {'min': angle_l, 'max': angle_h}
       """
       
+      voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE, H54_200_S500_R_PRESENT_VOLTAGE_LENGTH)
+      voltage = voltage_res[0][0]
+      voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_L, H54_200_S500_R_PRESENT_VOLTAGE_L_LENGTH)
+      voltage_l = voltage_l_res[0][0]
+      voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_H, H54_200_S500_R_PRESENT_VOLTAGE_H_LENGTH) 
+      voltage_h = voltage_h_res[0][0]
+      voltages = {'min': voltage_l, 'max': voltage_h}
 
       # Get the Motor Name
       model_name = self.dynotools.getModelNameByModelNumber(model_number)
@@ -419,7 +439,6 @@ class DynomixSerialProxy():
         counts[model_number[0]] += 1
 
         self.motor_info[str(motor_id)] = {"model_number": model_number[0]} # IRVIN
-
         break
  
     for motor_id in to_delete_if_error:
@@ -492,17 +511,23 @@ class DynomixSerialProxy():
           
       rate.sleep()
 
+  # TODO: Get these working without calling for serial proxy
+  def set_goal_velocity(self, servo_id, goal_position):
+    return self.sdk_io.set_goal_velocity(servo_id, goal_position, self.motor_info)
+
   def get_feedback(self, servo_id):
       """
       Returns the id, goal, position, error, speed, load, voltage, temperature
       and moving values from the specified servo.
       """
 
-    # TODO: multiple packet handler calls for the specificed packets.
-    #       - Build up sdk serial wrapper to read from functions
-    #       - Goal Position, Present Velocity, Present Current,
-    #         Present Temperature, Position Trajectory
-    # TODO: return library of called registers
+      # TODO: multiple packet handler calls for the specificed packets.
+      #       - Build up sdk serial wrapper to read from functions
+      #       - Goal Position, Present Velocity, Present Current,
+      #         Present Temperature, Position Trajectory
+      # TODO: return library of called registers
+      return self.sdk_io.get_feedback(servo_id, self.motor_info)
+      """
       model_number = self.motor_info[str(servo_id)]['model_number']
       model_name = self.dynotools.getModelNameByModelNumber(model_number)
       goal = self.sdk_io.get_goal(servo_id, model_name)
@@ -511,7 +536,6 @@ class DynomixSerialProxy():
       speed = self.sdk_io.get_speed(servo_id, model_name)
       temperature = self.sdk_io.get_temperature(servo_id, model_name)
       moving = self.sdk_io.get_moving(servo_id, model_name)
-      
 
       return { 'timestamp': 0,
           'id': servo_id,
@@ -523,6 +547,7 @@ class DynomixSerialProxy():
           'voltage': 0,
           'temperature': temperature,
           'moving': bool(moving) }
+      """
 
       """
       model_number = self.motor_info[str(servo_id)]['model_number']
@@ -674,6 +699,6 @@ if __name__ == '__main__':
   try:
     serial_proxy = DynomixSerialProxy()
     serial_proxy.connect()
-    rospy.spin()
+    # rospy.spin()
     serial_proxy.disconnect()
   except rospy.ROSInterruption: pass

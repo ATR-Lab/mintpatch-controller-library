@@ -76,7 +76,8 @@ class GUITranslator:
         if self.manager.check_included(pname,sid):
             #attepting to stop a motor that doesn't exist would be bad. many errors.
             
-            self.manager.ports_by_name[pname].wrapper.set_goal_velocity(sid,0)
+            # TODO: make sure it is fully working
+            self.manager.ports_by_name[pname].proxy.set_goal_velocity(sid,0)
                 #Uses a function in the wrapper to set the goal velocity to zero. This will slow the motor to a stop.
                     #ports_by_name is indexed by the port name, while the wrapper function needs the motor ID
 
@@ -109,7 +110,7 @@ class GUITranslator:
         if self.manager.check_included(pname,sid):
             #Trying to move a motor not attached to the system would be just as bad as stopping one
         
-            self.manager.ports_by_name[pname].wrapper.set_goal_velocity(sid,int(speed))
+            self.manager.ports_by_name[pname].proxy.set_goal_velocity(sid,int(speed))
                 #
 
             self.running_motors.append(servo_name)
@@ -125,8 +126,8 @@ class GUITranslator:
         sid=int(servo_name[-3:])
         
         #debug prints
-        #print(pname)
-        #print(sid)
+        # print("DEBUG PNAME: " + str(pname))
+        # print("DEBUG SID: " + str(sid))
 
         if self.manager.check_included(pname, sid):
             #We cannot try to access a motor which isn't attached.
@@ -134,7 +135,7 @@ class GUITranslator:
             idict={}
                 #Defines an empty set which will store the information dictionary
         
-            idict=self.manager.ports_by_name[pname].wrapper.get_feedback(sid)
+            idict=self.manager.ports_by_name[pname].proxy.get_feedback(sid)
                 #Uses the wrapper to fill that dictionary with the needed entries
         
             idict['id']=servo_name
@@ -171,6 +172,7 @@ class GUITranslator:
         """
         LOOP SETUP
         """
+        print("ENTER LOOP")
         Continue=True
         while(Continue):
             #Establishes a common, potentially infinite while loop.
@@ -189,9 +191,9 @@ class GUITranslator:
             
 
             """
-            Consule
+            Console
             """
-            conin=input()
+            conin = sys.stdin.readline()
             #or:
             #conin=sys.stdin.readline()
 
