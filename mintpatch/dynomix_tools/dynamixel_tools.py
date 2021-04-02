@@ -51,6 +51,9 @@ class DynamixelTools:
   def convertRawPosition2Degree(self, raw_position):
     return raw_position * 0.088
 
+  def raw_to_rad(self, raw, initial_position_raw, flipped, radians_per_encoder_tick):
+    return (initial_position_raw - raw if flipped else raw - initial_position_raw) * radians_per_encoder_tick
+
   ########################################################################
   #
   ########################################################################

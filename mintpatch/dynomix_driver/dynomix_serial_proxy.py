@@ -32,14 +32,14 @@ from dynomix_driver.dynamixel_const import *
 
 # TODO: List of things to change to get 'move()' implemented
 # Main Goal: Get write() working in sdk serial wrapper
-# - Fix size error (write2bytetxonly, or write4bytetxonly)
-# - Add pos_rad_to_raw(self, pos_rad) to Proxy
+# - Fix size error (write2bytetxonly, or write4bytetxonly) DONE
+# - Add rad_to_raw() to Dynamixel Tools DONE
+# - Add pos_rad_to_raw(self, pos_rad) to Proxy DONE
 # - Add in angle limits (sdk serial wrapper)
 # - Make sure motor parameters are correct
 #   - Get MX64 parameters working
 #   - Get H540 parameters working
 # - Add flipped boolean functionality to Dyno Serial Proxy within fill_motor_paramarters()
-# - Add rad_to_raw() to Proxy
 
 
 class DynomixSerialProxy():
@@ -78,6 +78,7 @@ class DynomixSerialProxy():
     self.num_ping_retries = 5
     self.dynotools = dynamixel_tools.DynamixelTools()
     self.sdk_io = sdk_serial_wrapper.SDKSerialWrapper(port_name, baud_rate)
+    self.angles = {}
 
     # Start to publish motor states
     self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size=1)
@@ -125,14 +126,6 @@ class DynomixSerialProxy():
 
     # If statements for filling each motor specifically from control table
     if model_number == H54_200_S500_R_MODEL_NUMBER:
-      """
-      angle_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_ANGLE_LIMIT_L, H54_200_S500_R_ANGLE_LIMIT_L_LENGTH)
-      angle_l = angle_l_res[0][0]
-      angle_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_ANGLE_LIMIT_H, H54_200_S500_R_ANGLE_LIMIT_H_LENGTH)
-      angle_h = angle_h_res[0][0]
-      angles = {'min': angle_l, 'max': angle_h}
-      """
-      
       voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE, H54_200_S500_R_PRESENT_VOLTAGE_LENGTH)
       voltage = voltage_res[0][0]
       voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_L, H54_200_S500_R_PRESENT_VOLTAGE_L_LENGTH)
@@ -140,18 +133,19 @@ class DynomixSerialProxy():
       voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_H, H54_200_S500_R_PRESENT_VOLTAGE_H_LENGTH) 
       voltage_h = voltage_h_res[0][0]
       voltages = {'min': voltage_l, 'max': voltage_h}
+      # """
 
       # Get the Motor Name
       model_name = self.dynotools.getModelNameByModelNumber(model_number)
 
-      # TODO: Get Max and Min angles
+      # Get Max and Min angles
       angles = self.sdk_io.get_angle_limits(motor_id, model_name)
+      self.angles[str(model_name)] = angles 
     
       rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
       rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
       rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
       rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-      
 
       torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
       rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
@@ -283,11 +277,19 @@ class DynomixSerialProxy():
 
     elif model_number == MX_64_T_2_NUMBER:
 
+      # Get the Motor Name
+      model_name = self.dynotools.getModelNameByModelNumber(model_number)
+
+      # TODO: Get Max and Min angles
+      angles = self.sdk_io.get_angle_limits(motor_id, model_name)
+
+      """
       angle_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_ANGLE_LIMIT_L, MX_64_T_2_ANGLE_LIMIT_L_LENGTH)
       angle_l = angle_l_res[0][0]
       angle_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_ANGLE_LIMIT_H, MX_64_T_2_ANGLE_LIMIT_H_LENGTH)
       angle_h = angle_h_res[0][0]
       angles = {'min': angle_l, 'max': angle_h}
+      """
 
       voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_PRESENT_VOLTAGE, MX_64_T_2_PRESENT_VOLTAGE_LENGTH)
       voltage = voltage_res[0][0]
@@ -373,7 +375,6 @@ class DynomixSerialProxy():
     # self.motor_static_info[motor_id]['max_angle'] = angles['max']
     # self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
     # self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
-
 
   def __find_motors(self):
     """
@@ -514,6 +515,18 @@ class DynomixSerialProxy():
   # TODO: Get these working without calling for serial proxy
   def set_goal_velocity(self, servo_id, goal_position):
     return self.sdk_io.set_goal_velocity(servo_id, goal_position, self.motor_info)
+
+  def pos_rad_to_raw(self, pos_rad):
+    # return self.sdk_io.pos_rad_to_raw(pos_rad, ...): 
+    self.x = pos_rad 
+
+  def pos_rad_to_raw(self, pos_rad):
+    if pos_rad < self.min_angle: 
+      pos_rad = self.min_angle
+    elif pos_rad > self.max_angle: 
+      pos_rad = self.max_angle
+    return self.rad_to_raw(pos_rad, self.initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN)
+
 
   def get_feedback(self, servo_id):
       """

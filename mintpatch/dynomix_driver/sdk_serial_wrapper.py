@@ -94,7 +94,7 @@ class SDKSerialWrapper:
   #   return data
 
   # TODO: Need to test and verify that this works, somehow.
-  def write(self, servo_id, address, data):
+  def write(self, servo_id, address, size, data):
     """ Write the values from the "data" list to the servo with "servo_id"
     starting with data[0] at "address", continuing through data[n-1] at
     "address" + (n-1), where n = len(data). "address" is an integer between
@@ -105,6 +105,8 @@ class SDKSerialWrapper:
         write(1, DXL_GOAL_POSITION_L, (20, 1))
     """
     # Get size variable
+
+    """
     size = len(data)
 
     print("ENTER WRITE()")
@@ -116,6 +118,27 @@ class SDKSerialWrapper:
       # wait for response packet from the motor
       timestamp = time.time()
       time.sleep(0.0013) # 0.00235 is a debug time value
+
+    return data
+    """
+
+    with self.serial_mutex:
+      if size == 4:
+        result = self.packet_handler.write4ByteTxOnly(
+          self.port_handler, 
+          self.servo_id,
+          address,
+          self.pos_rad_to_raw(int(data)))
+      elif size == 2:
+        result = self.packet_handler.write2ByteTxOnly(
+          elf.port_handler, 
+          self.servo_id,
+          address,
+          self.pos_rad_to_raw(int(data)))
+
+      # wait for response packet from the motor
+      timestamp = time.time()
+      time.sleep(0.0013)
 
     return data
 
@@ -202,8 +225,8 @@ class SDKSerialWrapper:
     still powered.
     """
     response = self.write(servo_id, DXL_TORQUE_ENABLE, [enabled])
-    if response:
-      self.exception_on_error(response[4], servo_id, '%sabling torque' % 'en' if enabled else 'dis')
+    # if response:
+      # self.exception_on_error(response[4], servo_id, '%sabling torque' % 'en' if enabled else 'dis')
     return response
 
   # TODO: Change to set_goal_position
@@ -220,8 +243,8 @@ class SDKSerialWrapper:
         # self.exception_on_error(response[4], servo_id, 'setting goal position to %d' % position)
     return response
     """
-    loVal = int(goal_position % 256)
-    hiVal = int(goal_position >> 8)
+    # loVal = int(goal_position % 256)
+    # hiVal = int(goal_position >> 8)
 
     # Get Model Name and Model Number (e.g., MX_64_T_2 - 311)
     model_number = motor_info[str(servo_id)]['model_number']
@@ -229,8 +252,9 @@ class SDKSerialWrapper:
 
     # TODO: get the register value for certain indexes of the goal position register
     register_goal_position = self.dynotools.getRegisterAddressByModel(model_name, "goal_position")
+    register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, "goal_position")
 
-    response = self.write(servo_id, register_goal_position, (loVal, hiVal))
+    response = self.write(servo_id, register_goal_position, register_goal_position_length, goal_position)
 
     return response
 
@@ -247,12 +271,14 @@ class SDKSerialWrapper:
       self.exception_on_error(response[4], servo_id, 'fetching model number')
     return response[5] + (response[6] << 8)
 
+
   def get_firmware_version(self, servo_id):
     """ Reads the servo's firmware version. """
     response = self.read(servo_id, DXL_VERSION, 1)
     if response:
       self.exception_on_error(response[4], servo_id, 'fetching firmware version')
     return response[5]
+
 
   def get_return_delay_time(self, servo_id):
     """ Reads the servo's return delay time. """
@@ -261,14 +287,13 @@ class SDKSerialWrapper:
       self.exception_on_error(response[4], servo_id, 'fetching return delay time')
     return response[5]
 
+
   def get_angle_limits(self, servo_id, model_name):
     """
     Returns the min and max angle limits from the specified servo.
     """
     # read in 4 consecutive bytes starting with low value of clockwise angle limit
     # Register Address and Length variables for Angle Min
-    # rospy.logwarn("DEBUG MODEL NAME FOR ANGLE MIN: " + str(model_name))
-
     register_angle_min = self.dynotools.getRegisterAddressByModel(model_name, "angle_limit_min")
     register_angle_min_length = self.dynotools.getAddressSizeByModel(model_name, "angle_limit_min")
     
@@ -284,20 +309,37 @@ class SDKSerialWrapper:
     raw_response_max = self.read(servo_id, register_angle_max, register_angle_max_length)
     response_max = raw_response_max[0]
 
-    # rospy.logwarn("DEBUG ANGLE MAX: " + str(response_max))
-    # rospy.logwarn("DEBUG ANGLE MIN: " + str(response_min))
-
+    # TODO: Either implement or remove error handling
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching CW/CCW angle limits')
       
-    # Will crash, still testing above
-    # extract data valus from the raw data
-    # cwLimit = response[5] + (response[6] << 8)
-    # ccwLimit = response[7] + (response[8] << 8)
+    # If length is two, just read from 0th and 1st index, otherwise, read from 0-3
+    # Formula for Positive: response[0] + response[1]^8 + response[2]^16 + response[3]^32
+    # Formula for Negative:
+    # -1 * ((response[0] + 1) + (255 - response[1])^8 + (255 - response[2])^16 +
+    # (255 - response[3])^32)
+    if register_angle_max_length == 2:
+      angle_max = response_max[0] + (response_max[1] << 8)
+      angle_min = response_min[0] + (response_min[1] << 8)
+
+    elif register_angle_max_length == 4:
+      angle_max = response_max[0] + (response_max[1] << 8) + (response_max[2] << 16) + (response_max[3] << 32)
+      
+      if response_min[3] >= 1:
+        angle_min_ref = [255, 255, 255, 255]
+        response_min[0] = angle_min_ref[0] - response_min[0]
+        response_min[1] = angle_min_ref[1] - response_min[1]
+        response_min[2] = angle_min_ref[2] - response_min[2]
+        response_min[3] = angle_min_ref[3] - response_min[3]
+        angle_min = (response_min[0] + 1) + (response_min[1] << 8) + (response_min[2] << 16) + (response_min[3] << 32)
+        angle_min *= -1
+      
+      else:
+        angle_min = response_min[0] + (response_min[1] << 8) + (response_min[2] << 16) + (response_min[3] << 32)
 
     # return the data in a dictionary
-    # TODO: return right values
-    return {'min':response_min[0], 'max':response_max[0]}
+    return {'min': angle_min, 'max': angle_max}
+
 
   def get_drive_mode(self, servo_id):
     """ Reads the servo's drive mode. """
@@ -310,7 +352,10 @@ class SDKSerialWrapper:
     """
     Returns the min and max voltage limits from the specified servo.
     """
-    response = self.read(servo_id, DXL_DOWN_LIMIT_VOLTAGE, 2)
+    # response = self.read(servo_id, DXL_DOWN_LIMIT_VOLTAGE, 2)
+
+    
+
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching voltage limits')
     # extract data valus from the raw data
