@@ -178,7 +178,6 @@ class GUITranslator:
         """
         LOOP SETUP
         """
-        print("ENTER LOOP")
         Continue=True
         while(Continue):
             #Establishes a common, potentially infinite while loop.

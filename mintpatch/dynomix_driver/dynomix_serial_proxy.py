@@ -98,8 +98,6 @@ class DynomixSerialProxy():
     self.running = False
 
 
-  # TODO: IRVIN SWITCH THIS TO USE sdk_serial_wrapper.py (I agree, Dr. Kim, Shawn, or whoever
-  #      put this here. -Marcus)
   def __fill_motor_parameters(self, motor_id, model_number):
     """
     Stores some extra information about each motor on the parameter server.
@@ -142,15 +140,9 @@ class DynomixSerialProxy():
     rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
     rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
     rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-      
+
     # Get Parameters for pos_to_raw
     self.flipped = angles['min'] > angles['max']
-    self.torque_per_volt = torque_per_volt
-    self.max_torque = torque_per_volt * voltage
-    self.velocity_per_volt = velocity_per_volt
-    self.rpm_per_tick = rpm_per_tick
-    self.max_velocity = velocity_per_volt * voltage
-    self.radians_second_per_encoder_tick = rpm_per_tick * RPM_TO_RADSEC
     self.encoder_resolution = encoder_resolution
     self.range_degrees = range_degrees
     self.range_radians = range_radians
@@ -160,12 +152,6 @@ class DynomixSerialProxy():
     self.radians_per_encoder_tick = range_radians / encoder_resolution
     self.initial_position_raw = self.sdk_io.get_position(motor_id, model_name)
 
-    # keep some parameters around for diagnostics
-    self.motor_static_info[motor_id] = {}
-    self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-    self.motor_static_info[motor_id]['min_angle'] = angles['min']
-    self.motor_static_info[motor_id]['max_angle'] = angles['max']
-
     # Flipped case
     if self.flipped:
       self.min_angle = (self.initial_position_raw - angles['min']) * self.radians_per_encoder_tick
@@ -174,35 +160,39 @@ class DynomixSerialProxy():
       self.min_angle = (angles['min'] - self.initial_position_raw) * self.radians_per_encoder_tick
       self.max_angle = (angles['max']- self.initial_position_raw) * self.radians_per_encoder_tick
 
-    # Debug Prints
-    # print("DEBUG INITIAL POSITION ID: " + str(motor_id))
-    # print("DEBUG INITIAL POSITION: " + str(self.initial_position_raw))
+    # keep some parameters around for diagnostics
+    self.motor_static_info[motor_id] = {}
+    self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
+    self.motor_static_info[motor_id]['min_angle'] = angles['min']
+    self.motor_static_info[motor_id]['max_angle'] = angles['max']
 
-    # crash = angles['crash']
 
   def __find_motors(self):
     """
     Function to add motors into motor container with servo id, model name and model number
     """
-    # Begin by adding 
-    rospy.loginfo('%s: Pinging motor IDs %d through %d...' % (self.port_namespace, self.min_motor_id, self.max_motor_id))
+    # Start with Motor Info declaration
+    # rospy.loginfo('%s: Pinging motor IDs %d through %d...' % (self.port_namespace, self.min_motor_id, self.max_motor_id))
+    print('%s: Pinging motor IDs %d through %d...' % (self.port_namespace, self.min_motor_id, self.max_motor_id))
     self.motors = []
     self.motor_static_info = {}
+    self.motor_info = {}
 
-    self.motor_info = {} # TODO: contain information on model_num and IDs
-
+    # Getting Motor IDs
     for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
       for trial in range(self.num_ping_retries):
         try:
           result = self.packet_handler.ping(self.port_handler, motor_id)
+
         except Exception as ex:
           rospy.logerr('Exception thrown while pinging motor %d - %s' % (motor_id, ex))
           continue
 
-        if not result[1]: # If no error was returned
+        if not result[1]: # If no error was returned, add motor ID
           self.motors.append(motor_id)
           break
 
+    # Failure to find any motors :-(
     if not self.motors:
       rospy.logfatal('%s: No motors found.' % self.port_namespace)
       sys.exit(1)
@@ -210,29 +200,37 @@ class DynomixSerialProxy():
     counts = defaultdict(int)
 
     to_delete_if_error = []
-    rospy.loginfo("Getting motor numbers.......")
+    # rospy.loginfo("Getting motor numbers.......")
+    print("Getting motor numbers.......")
+
+    # Find the model numbers asscoiated with the Motor IDs
     for motor_id in self.motors:
       for trial in range(self.num_ping_retries):
         model_number = self.packet_handler.read2ByteTxRx(self.port_handler, motor_id, 0)
-        rospy.logwarn("MOTOR_ID: " + str(motor_id))
-        rospy.logwarn("MODEL_NUMBER: " + str(model_number[0]))
-        rospy.logwarn("ERROR: " + str(model_number[1]))
+        # rospy.logwarn("MOTOR_ID: " + str(motor_id))
+        # rospy.logwarn("MODEL_NUMBER: " + str(model_number[0]))
+        # rospy.logwarn("ERROR: " + str(model_number[1]))
+        print("MOTOR_ID: " + str(motor_id))
+        print("MODEL_NUMBER: " + str(model_number[0]))
+        print("ERROR_NUMBER: " + str(model_number[1]))
 
+        # Fill Motor Parameters
         self.__fill_motor_parameters(motor_id, model_number[0])
-
         counts[model_number[0]] += 1
-
         self.motor_info[str(motor_id)] = {"model_number": model_number[0]} # IRVIN
         break
- 
+    
+    # If any errors happen, remove the motor from the list
     for motor_id in to_delete_if_error:
       self.motors.remove(motor_id)
 
-    rospy.set_param('dynamixel/%s/connected_ids' % self.port_namespace, self.motors)
+    # rospy.set_param('dynamixel/%s/connected_ids' % self.port_namespace, self.motors)
 
-    rospy.set_param('dynamixel/%s/motor_info' % self.port_namespace, self.motor_info) # IRVIN
+    # rospy.set_param('dynamixel/%s/motor_info' % self.port_namespace, self.motor_info) # IRVIN
 
     status_str = '%s: Found %d motors - ' % (self.port_namespace, len(self.motors))
+
+    # Get status of each motor
     for model_number,count in counts.items():
       if count:
         if model_number in MODEL_NUMBER_2_MOTOR_NAME:
@@ -245,9 +243,11 @@ class DynomixSerialProxy():
           
           status_str = status_str[:-2] + '], '
 
-    rospy.loginfo('%s, initialization complete.' % status_str[:-2])
+    # rospy.loginfo('%s, initialization complete.' % status_str[:-2])
+    print('%s, initialization complete.' % status_str[:-2])
 
 
+  # For ROS Implementation
   def __update_motor_states(self):
     num_events = 50
     rates = deque([float(self.update_rate)]*num_events, maxlen=num_events)
@@ -282,22 +282,16 @@ class DynomixSerialProxy():
           
       rate.sleep()
 
+
   # TODO: Get these working without calling for serial proxy
   def set_goal_velocity(self, servo_id, goal_position):
-    return self.sdk_io.set_goal_velocity(servo_id, goal_position, 
-                                        self.motor_info, self.min_angle, 
-                                        self.max_angle, self.initial_position_raw, 
-                                        self.flipped, self.encoder_ticks_per_radian)
+    return self.sdk_io.set_goal_velocity(servo_id, goal_position, self.motor_info)
 
   def set_torque_enabled(self, servo_id, enabled):
     return self.sdk_io.set_torque_enabled(servo_id, self.motor_info, enabled)
 
   def get_feedback(self, servo_id):
-      """
-      Returns the id, goal, position, error, speed, load, voltage, temperature
-      and moving values from the specified servo.
-      """
-      return self.sdk_io.get_feedback(servo_id, self.motor_info)
+    return self.sdk_io.get_feedback(servo_id, self.motor_info)
 
 
 if __name__ == '__main__':
