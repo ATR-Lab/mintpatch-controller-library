@@ -101,7 +101,7 @@ class GUITranslator:
             self.stop_motor(motor)
         #We loop though ever motor that we know to be running, and stop them.
 
-    def move_motor(self, servo_name,speed):
+    def move_motor(self, servo_name, speed):
 
         #These values hold the same role as in stop_motor
         pname=servo_name[:-4]
@@ -111,7 +111,7 @@ class GUITranslator:
             #Trying to move a motor not attached to the system would be just as bad as stopping one
         
             self.manager.ports_by_name[pname].proxy.set_goal_velocity(sid,int(speed))
-                #
+                # WIP
 
             self.running_motors.append(servo_name)
                 #We add the motor to a list of currently running motors.

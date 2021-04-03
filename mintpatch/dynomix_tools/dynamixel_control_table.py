@@ -41,7 +41,7 @@ MOTOR_CONTROL_TABLE = {
   },
   "H54_200_S500_R_2": {
     "present_position": {
-      "address": 611,
+      "address": 613,
       "size": 4
     },
     "angle_limit_max": {
@@ -83,11 +83,23 @@ MOTOR_CONTROL_TABLE = {
     "moving": {
       "address": 610,
       "size": 2
+    },
+    "present_voltage": {
+      "address": 623,
+      "size": 2
+    },
+    "min_voltage": {
+      "address": 24,
+      "size": 2
+    },
+    "max_voltage": {
+      "address": 22,
+      "size": 2
     }
   },
   "MX_64_T_2": {
     "present_position": {
-      "address": 132,
+      "address": 134,
       "size": 4
     },
     "angle_limit_max": {
@@ -128,6 +140,18 @@ MOTOR_CONTROL_TABLE = {
     },
     "moving": {
       "address": 122,
+      "size": 2
+    },
+    "present_voltage": {
+      "address": 144,
+      "size": 2
+    },
+    "min_voltage": {
+      "address": 34,
+      "size": 2
+    },
+    "max_voltage": {
+      "address": 32,
       "size": 2
     }
   },

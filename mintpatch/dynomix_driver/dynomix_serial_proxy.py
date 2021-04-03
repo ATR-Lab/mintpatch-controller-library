@@ -30,17 +30,6 @@ from dynomix_driver.dynamixel_const import *
   # import roslib
   # roslib.load_manifest('dynamixel_drive')
 
-# TODO: List of things to change to get 'move()' implemented
-# Main Goal: Get write() working in sdk serial wrapper
-# - Fix size error (write2bytetxonly, or write4bytetxonly) DONE
-# - Add rad_to_raw() to Dynamixel Tools DONE
-# - Add pos_rad_to_raw(self, pos_rad) to Proxy DONE
-# - Add in angle limits (sdk serial wrapper)
-# - Make sure motor parameters are correct
-#   - Get MX64 parameters working
-#   - Get H540 parameters working
-# - Add flipped boolean functionality to Dyno Serial Proxy within fill_motor_paramarters()
-
 
 class DynomixSerialProxy():
   """
@@ -82,7 +71,6 @@ class DynomixSerialProxy():
 
     # Start to publish motor states
     self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size=1)
-    #self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticsArray, queue_size=1)
 
 
   def connect(self):
@@ -102,12 +90,6 @@ class DynomixSerialProxy():
 
     self.running = True
 
-    # self.__update_motor_states()
-
-    # TODO: Implement
-    # if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
-    # if self.diagnostics_rate > 0: Thread(target=self.__publish_diagnostic_information).start()
-
 
   def disconnect(self):
     """
@@ -123,258 +105,80 @@ class DynomixSerialProxy():
     Stores some extra information about each motor on the parameter server.
     Some of these paramters are used in joint controller implementation.
     """
+    # Get the Motor Name
+    model_name = self.dynotools.getModelNameByModelNumber(model_number)
 
-    # If statements for filling each motor specifically from control table
-    if model_number == H54_200_S500_R_MODEL_NUMBER:
-      voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE, H54_200_S500_R_PRESENT_VOLTAGE_LENGTH)
-      voltage = voltage_res[0][0]
-      voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_L, H54_200_S500_R_PRESENT_VOLTAGE_L_LENGTH)
-      voltage_l = voltage_l_res[0][0]
-      voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, H54_200_S500_R_PRESENT_VOLTAGE_H, H54_200_S500_R_PRESENT_VOLTAGE_H_LENGTH) 
-      voltage_h = voltage_h_res[0][0]
-      voltages = {'min': voltage_l, 'max': voltage_h}
-      # """
+    # Get Max and Min angles
+    angles = self.sdk_io.get_angle_limits(motor_id, model_name)
+    self.angles[str(model_name)] = angles 
 
-      # Get the Motor Name
-      model_name = self.dynotools.getModelNameByModelNumber(model_number)
-
-      # Get Max and Min angles
-      angles = self.sdk_io.get_angle_limits(motor_id, model_name)
-      self.angles[str(model_name)] = angles 
+    # Get Current, Min, and Max voltages
+    voltage = self.sdk_io.get_voltage(motor_id, model_name)
+    voltages = self.sdk_io.get_voltage_limits(motor_id, model_name)
     
-      rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
-      rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
-      rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
-      rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
+    # ROS Parameters Setup
+    rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
+    rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
+    rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
+    rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
 
-      torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-      rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
+    torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
+    rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
+    rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
       
-      velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-      rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-      rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-      rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
+    velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
+    rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
+    rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
+    rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
+    rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
       
-      encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-      range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-      range_radians = math.radians(range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-      rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-      rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
+    encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
+    range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
+    range_radians = math.radians(range_degrees)
+    rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
+    rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
+    rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
+    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
+    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
+    rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
+    rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
       
-      # keep some parameters around for diagnostics
-      self.motor_static_info[motor_id] = {}
-      self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      self.motor_static_info[motor_id]['min_angle'] = angles['min']
-      self.motor_static_info[motor_id]['max_angle'] = angles['max']
+    # Get Parameters for pos_to_raw
+    self.flipped = angles['min'] > angles['max']
+    self.torque_per_volt = torque_per_volt
+    self.max_torque = torque_per_volt * voltage
+    self.velocity_per_volt = velocity_per_volt
+    self.rpm_per_tick = rpm_per_tick
+    self.max_velocity = velocity_per_volt * voltage
+    self.radians_second_per_encoder_tick = rpm_per_tick * RPM_TO_RADSEC
+    self.encoder_resolution = encoder_resolution
+    self.range_degrees = range_degrees
+    self.range_radians = range_radians
+    self.encoder_ticks_per_degree = encoder_resolution / range_degrees
+    self.encoder_ticks_per_radian = encoder_resolution / range_radians
+    self.degrees_per_encoder_tick = range_degrees / encoder_resolution
+    self.radians_per_encoder_tick = range_radians / encoder_resolution
+    self.initial_position_raw = self.sdk_io.get_position(motor_id, model_name)
 
+    # keep some parameters around for diagnostics
+    self.motor_static_info[motor_id] = {}
+    self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
+    self.motor_static_info[motor_id]['min_angle'] = angles['min']
+    self.motor_static_info[motor_id]['max_angle'] = angles['max']
 
+    # Flipped case
+    if self.flipped:
+      self.min_angle = (self.initial_position_raw - angles['min']) * self.radians_per_encoder_tick
+      self.max_angle = (self.initial_position_raw - angles['max']) * self.radians_per_encoder_tick
+    else:
+      self.min_angle = (angles['min'] - self.initial_position_raw) * self.radians_per_encoder_tick
+      self.max_angle = (angles['max']- self.initial_position_raw) * self.radians_per_encoder_tick
 
-    elif model_number == XM540_W270_T_NUMBER:
-      
-      angle_l = self.packet_handler.readTxRx(self.port_handler, motor_id, XM540_W270_T_ANGLE_LIMIT_L, XM540_W270_T_ANGLE_LIMIT_L_LENGTH)
-      angle_h = self.packet_handler.readTxRx(self.port_handler, motor_id, XM540_W270_T_ANGLE_LIMIT_H, XM540_W270_T_ANGLE_LIMIT_H_LENGTH)
-      angles = {'min': angle_l, 'max': angle_h}
+    # Debug Prints
+    # print("DEBUG INITIAL POSITION ID: " + str(motor_id))
+    # print("DEBUG INITIAL POSITION: " + str(self.initial_position_raw))
 
-      voltage = self.packet_handler.readTxRx(self.port_handler, motor_id, XM540_W270_T_PRESENT_VOLTAGE, XM540_W270_T_PRESENT_VOLTAGE_LENGTH)
-      voltage_l = self.packet_handler.readTxRx(self.port_handler, motor_id, XM540_W270_T_PRESENT_VOLTAGE_L, XM540_W270_T_PRESENT_VOLTAGE_L_LENGTH)
-      voltage_h = self.packet_handler.readTxRx(self.port_handler, motor_id, XM540_W270_T_PRESENT_VOLTAGE_H, XM540_W270_T_PRESENT_VOLTAGE_H_LENGTH) 
-      voltages = {'min': voltage_l, 'max': voltage_h}
-    
-      rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
-      rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
-      rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
-      rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-      
-
-      torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-      rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
-      
-      velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-      rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-      rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-      rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
-      
-      encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-      range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-      range_radians = math.radians(range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-      rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-      rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-      
-      # keep some parameters around for diagnostics
-      self.motor_static_info[motor_id] = {}
-      self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      self.motor_static_info[motor_id]['firmware'] = self.dxl_io.get_firmware_version(motor_id)
-      self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
-      self.motor_static_info[motor_id]['min_angle'] = angles['min']
-      self.motor_static_info[motor_id]['max_angle'] = angles['max']
-      self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
-      self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
-
-
-    elif model_number == MX_106_T_2_NUMBER:
-      
-      angle_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_106_T_2_ANGLE_LIMIT_L, MX_106_T_2_ANGLE_LIMIT_L_LENGTH)
-      angle_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_106_T_2_ANGLE_LIMIT_H, MX_106_T_2_ANGLE_LIMIT_H_LENGTH)
-      angles = {'min': angle_l_res[0][0], 'max': angle_h_res[0][0]}
-
-      voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_106_T_2_PRESENT_VOLTAGE, MX_106_T_2_PRESENT_VOLTAGE_LENGTH)
-      voltage = voltage_res[0][0]
-      voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_106_T_2_LIMIT_VOLTAGE_L, MX_106_T_2_LIMIT_VOLTAGE_L_LENGTH)
-      voltage_l = voltage_l_res[0][0]
-      voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_106_T_2_LIMIT_VOLTAGE_H, MX_106_T_2_LIMIT_VOLTAGE_H_LENGTH) 
-      voltage_h = voltage_h_res[0][0]
-      voltages = {'min': voltage_l, 'max': voltage_h}
-    
-      rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
-      rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
-      rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
-      rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-      
-
-      torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-      rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-      print voltage
-      rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
-      
-      velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-      rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-      rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-      rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
-      
-      encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-      range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-      range_radians = math.radians(range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-      rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-      rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-      
-      # keep some parameters around for diagnostics
-      self.motor_static_info[motor_id] = {}
-      self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      self.motor_static_info[motor_id]['min_angle'] = angles['min']
-      self.motor_static_info[motor_id]['max_angle'] = angles['max']
-      self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
-      self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
-
-    elif model_number == MX_64_T_2_NUMBER:
-
-      # Get the Motor Name
-      model_name = self.dynotools.getModelNameByModelNumber(model_number)
-
-      # TODO: Get Max and Min angles
-      angles = self.sdk_io.get_angle_limits(motor_id, model_name)
-
-      """
-      angle_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_ANGLE_LIMIT_L, MX_64_T_2_ANGLE_LIMIT_L_LENGTH)
-      angle_l = angle_l_res[0][0]
-      angle_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_ANGLE_LIMIT_H, MX_64_T_2_ANGLE_LIMIT_H_LENGTH)
-      angle_h = angle_h_res[0][0]
-      angles = {'min': angle_l, 'max': angle_h}
-      """
-
-      voltage_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_PRESENT_VOLTAGE, MX_64_T_2_PRESENT_VOLTAGE_LENGTH)
-      voltage = voltage_res[0][0]
-      voltage_l_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_LIMIT_VOLTAGE_L, MX_64_T_2_LIMIT_VOLTAGE_L_LENGTH)
-      voltage_l = voltage_l_res[0][0]
-      voltage_h_res = self.packet_handler.readTxRx(self.port_handler, motor_id, MX_64_T_2_LIMIT_VOLTAGE_H, MX_64_T_2_LIMIT_VOLTAGE_H_LENGTH) 
-      voltage_h = voltage_h_res[0][0]
-      rospy.logwarn("DEBUG VOLTAGE_H MX64: " + str(voltage_h_res[0]))
-      voltages = {'min': voltage_l, 'max': voltage_h}
-    
-      rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
-      rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
-      rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
-      rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-      
-
-      torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-      rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
-      
-      velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-      rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-      rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-      rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-      rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
-      
-      encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-      range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-      range_radians = math.radians(range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-      rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-      rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-      rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-      rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-      
-      # keep some parameters around for diagnostics
-      self.motor_static_info[motor_id] = {}
-      self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-      self.motor_static_info[motor_id]['min_angle'] = angles['min']
-      self.motor_static_info[motor_id]['max_angle'] = angles['max']
-      self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
-      self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
-
-    # Have in here for the purposes of having reference code
-    # angles = self.dxl_io.get_angle_limits(motor_id)
-    # voltage = self.dxl_io.get_voltage(motor_id)
-    # voltages = self.dxl_io.get_voltage_limits(motor_id)
-    
-    # rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
-    # rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
-    # rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
-    # rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-    
-    # torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-    # rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-    # rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
-    
-    # velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-    # rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-    # rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-    # rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-    # rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
-    
-    # encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-    # range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-    # range_radians = math.radians(range_degrees)
-    # rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-    # rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-    # rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-    # rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-    # rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-    # rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-    # rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-    
-    # # keep some parameters around for diagnostics
-    # self.motor_static_info[motor_id] = {}
-    # self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
-    # self.motor_static_info[motor_id]['firmware'] = self.dxl_io.get_firmware_version(motor_id)
-    # self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
-    # self.motor_static_info[motor_id]['min_angle'] = angles['min']
-    # self.motor_static_info[motor_id]['max_angle'] = angles['max']
-    # self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
-    # self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
+    # crash = angles['crash']
 
   def __find_motors(self):
     """
@@ -391,9 +195,6 @@ class DynomixSerialProxy():
       for trial in range(self.num_ping_retries):
         try:
           result = self.packet_handler.ping(self.port_handler, motor_id)
-          # if self.packet_handler.getRxPacketError(error):
-          #   rospy.loginfo(self.packet_handler.getRxPacketError(error))
-          # rospy.loginfo(self.packet_handler.getTxRxResult(result[0]))
         except Exception as ex:
           rospy.logerr('Exception thrown while pinging motor %d - %s' % (motor_id, ex))
           continue
@@ -412,23 +213,6 @@ class DynomixSerialProxy():
     rospy.loginfo("Getting motor numbers.......")
     for motor_id in self.motors:
       for trial in range(self.num_ping_retries):
-        # try:
-        #   # model_number = self.packet_handler.ping(self.port_handler, motor_id) # TODO: Change to user sdk_serial_wrapper
-        #   # result = self.packet_handler.read2ByteTxRx(self.port_handler, motor_id, 0) # TODO: IRVIN Implement wrapper to get model number
-         
-        #   rospy.logwarn("MOTOR_ID: " + motor_id)
-        #   model_number = self.packet_handler.read2ByteTxRx(self.port_handler, motor_id, 0)
-        #   # rospy.loginfo(result)
-        #   # rospy.loginfo("ID: %d MOTOR_NUMBER: %d", motor_id, result[0])
-        #   # rospy.loginfo("RESULT VALUE: " + self.packet_handler.getTxRxResult(result[0]))
-        #   # rospy.loginfo("ERROR VALUE: " + self.packet_handler.getRxPacketError(result[1]))
-        #   # model_number = result[0]
-        #   rospy.logwarn("[dynomix_serial_proxy MODEL_NUMBER: %d ", model_number)
-        #   self.__fill_motor_parameters(motor_id, model_number)
-        # except Exception as ex:
-        #   rospy.logerr('Exception thrown while getting attributes for motor %d - %s' % (motor_id, ex))
-        #   if trial == self.num_ping_retries - 1: to_delete_if_error.append(motor_id)
-        #   continue
         model_number = self.packet_handler.read2ByteTxRx(self.port_handler, motor_id, 0)
         rospy.logwarn("MOTOR_ID: " + str(motor_id))
         rospy.logwarn("MODEL_NUMBER: " + str(model_number[0]))
@@ -436,7 +220,6 @@ class DynomixSerialProxy():
 
         self.__fill_motor_parameters(motor_id, model_number[0])
 
-        # counts[model_number] += 1
         counts[model_number[0]] += 1
 
         self.motor_info[str(motor_id)] = {"model_number": model_number[0]} # IRVIN
@@ -476,22 +259,9 @@ class DynomixSerialProxy():
       motor_states = []
       for motor_id in self.motors:
         try:
-          # state = self.sdk_io.get_feedback(motor_id)      # TODO: IRVIN needs to Update to use new Serial proxy
           state = self.get_feedback(motor_id)
           if state:
             motor_states.append(MotorState(**state))
-            # if dynamixel_io.exception: raise dynamixel_io.exception
-        # except dynamixel_io.FatalErrorCodeError, fece:
-        #   rospy.logerr(fece)
-        # except dynamixel_io.NonfatalErrorCodeError, nfece:
-        #   self.error_counts['non_fatal'] += 1
-        #   rospy.logdebug(nfece)
-        # except dynamixel_io.ChecksumError, cse:
-        #   self.error_counts['checksum'] += 1
-        #   rospy.logdebug(cse)
-        # except dynamixel_io.DroppedPacketError, dpe:
-        #   self.error_counts['dropped'] += 1
-        #   rospy.logdebug(dpe.message)
         except OSError, ose:
           if ose.errno != errno.EAGAIN:
             rospy.logfatal(errno.errorcode[ose.errno])
@@ -514,204 +284,22 @@ class DynomixSerialProxy():
 
   # TODO: Get these working without calling for serial proxy
   def set_goal_velocity(self, servo_id, goal_position):
-    return self.sdk_io.set_goal_velocity(servo_id, goal_position, self.motor_info)
-
-  def pos_rad_to_raw(self, pos_rad):
-    # return self.sdk_io.pos_rad_to_raw(pos_rad, ...): 
-    self.x = pos_rad 
-
-  def pos_rad_to_raw(self, pos_rad):
-    if pos_rad < self.min_angle: 
-      pos_rad = self.min_angle
-    elif pos_rad > self.max_angle: 
-      pos_rad = self.max_angle
-    return self.rad_to_raw(pos_rad, self.initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN)
-
+    return self.sdk_io.set_goal_velocity(servo_id, goal_position, 
+                                        self.motor_info, self.min_angle, 
+                                        self.max_angle, self.initial_position_raw, 
+                                        self.flipped, self.encoder_ticks_per_radian)
 
   def get_feedback(self, servo_id):
       """
       Returns the id, goal, position, error, speed, load, voltage, temperature
       and moving values from the specified servo.
       """
-
-      # TODO: multiple packet handler calls for the specificed packets.
-      #       - Build up sdk serial wrapper to read from functions
-      #       - Goal Position, Present Velocity, Present Current,
-      #         Present Temperature, Position Trajectory
-      # TODO: return library of called registers
       return self.sdk_io.get_feedback(servo_id, self.motor_info)
-      """
-      model_number = self.motor_info[str(servo_id)]['model_number']
-      model_name = self.dynotools.getModelNameByModelNumber(model_number)
-      goal = self.sdk_io.get_goal(servo_id, model_name)
-      position = self.sdk_io.get_position(servo_id, model_name)
-      error = position - goal
-      speed = self.sdk_io.get_speed(servo_id, model_name)
-      temperature = self.sdk_io.get_temperature(servo_id, model_name)
-      moving = self.sdk_io.get_moving(servo_id, model_name)
-
-      return { 'timestamp': 0,
-          'id': servo_id,
-          'goal': goal,
-          'position': position,
-          'error': error,
-          'speed': speed,
-          'load': 0,
-          'voltage': 0,
-          'temperature': temperature,
-          'moving': bool(moving) }
-      """
-
-      """
-      model_number = self.motor_info[str(servo_id)]['model_number']
-      model_name = self.dynotools.getModelNameByModelNumber(model_number)
-      start_address = self.dynotools.getAddressSizeByModel(model_number, 'goal_position')
-      summary_size = self.dynotools.getSumaryAddressSizeByModel(model_number)
-
-      # read in X consecutive bytes starting with low value for goal position
-      # response = self.read(servo_id, DXL_GOAL_POSITION_L, 17)
-      raw_response  = self.packet_handler.readTxRx(self.port_handler, servo_id, start_address, summary_size)
-      response = raw_response[0]
-      # if response:
-          # self.exception_on_error(response[4], servo_id, 'fetching full servo status')
-
-      # rospy.logwarn("RESPONSE RAW: " + str(response))
-
-      # rospy.logwarn("RESPONSE LENGTH: " + str(len(response)))
-
-      if model_name == "MX_106_2" and len(response) == 31:
-        # extract data values from the raw data
-        goal = response[0] + (response[6] << 8)
-        position = response[11] + (response[12] << 8)
-        error = position - goal
-        speed = response[13] + ( response[14] << 8)
-        if speed > 1023: speed = 1023 - speed
-        load_raw = response[15] + (response[16] << 8)
-        load_direction = 1 if self.dynotools.test_bit(load_raw, 10) else 0
-        load = (load_raw & int('1111111111', 2)) / 1024.0
-        if load_direction == 1: load = -load
-        voltage = response[17] / 10.0
-        temperature = response[18]
-        moving = response[21]
-        timestamp = response[-1]  
-
-        return { 'timestamp': timestamp,
-          'id': servo_id,
-          'goal': goal,
-          'position': position,
-          'error': error,
-          'speed': speed,
-          'load': load,
-          'voltage': voltage,
-          'temperature': temperature,
-          'moving': bool(moving) }  
 
 
-      elif model_name == "H54_200_S500_R_2" and len(response) == 31:
-        # extract data values from the raw data
-        goal = response[5] + (response[6] << 8)
-        position = response[11] + (response[12] << 8)
-        error = position - goal
-        speed = response[13] + ( response[14] << 8)
-        if speed > 1023: speed = 1023 - speed
-        load_raw = response[15] + (response[16] << 8)
-        load_direction = 1 if self.dynotools.test_bit(load_raw, 10) else 0
-        load = (load_raw & int('1111111111', 2)) / 1024.0
-        if load_direction == 1: load = -load
-        voltage = response[17] / 10.0
-        temperature = response[18]
-        moving = response[21]
-        timestamp = response[-1] 
-
-        return { 'timestamp': timestamp,
-          'id': servo_id,
-          'goal': goal,
-          'position': position,
-          'error': error,
-          'speed': speed,
-          'load': load,
-          'voltage': voltage,
-          'temperature': temperature,
-          'moving': bool(moving) }  
-
-
-      if model_name == "XM540_w270_R_2" and len(response) == 31:
-        # extract data values from the raw data
-        goal = response[5] + (response[6] << 8)
-        position = response[11] + (response[12] << 8)
-        error = position - goal
-        speed = response[13] + ( response[14] << 8)
-        if speed > 1023: speed = 1023 - speed
-        load_raw = response[15] + (response[16] << 8)
-        load_direction = 1 if self.dynotools.test_bit(load_raw, 10) else 0
-        load = (load_raw & int('1111111111', 2)) / 1024.0
-        if load_direction == 1: load = -load
-        voltage = response[17] / 10.0
-        temperature = response[18]
-        moving = response[21]
-        timestamp = response[-1] 
-
-        return { 'timestamp': timestamp,
-          'id': servo_id,
-          'goal': goal,
-          'position': position,
-          'error': error,
-          'speed': speed,
-          'load': load,
-          'voltage': voltage,
-          'temperature': temperature,
-          'moving': bool(moving) }  
-
-
-      elif model_name == "MX_64_T_2" and len(response) == 31:
-        # extract data values from the raw data
-        goal = response[5] + (response[6] << 8)
-        position = response[11] + (response[12] << 8)
-        error = position - goal
-        speed = response[13] + ( response[14] << 8)
-        if speed > 1023: speed = 1023 - speed
-        load_raw = response[15] + (response[16] << 8)
-        load_direction = 1 if self.dynotools.test_bit(load_raw, 10) else 0
-        load = (load_raw & int('1111111111', 2)) / 1024.0
-        if load_direction == 1: load = -load
-        voltage = response[17] / 10.0
-        temperature = response[18]
-        moving = response[21]
-        timestamp = response[-1]
-
-        return { 'timestamp': timestamp,
-          'id': servo_id,
-          'goal': goal,
-          'position': position,
-          'error': error,
-          'speed': speed,
-          'load': load,
-          'voltage': voltage,
-          'temperature': temperature,
-          'moving': bool(moving) }  
-
-      # if len(response) == 24:
-      #     # extract data values from the raw data
-      #     goal = response[5] + (response[6] << 8)
-      #     position = response[11] + (response[12] << 8)
-      #     error = position - goal
-      #     speed = response[13] + ( response[14] << 8)
-      #     if speed > 1023: speed = 1023 - speed
-      #     load_raw = response[15] + (response[16] << 8)
-      #     load_direction = 1 if self.test_bit(load_raw, 10) else 0
-      #     load = (load_raw & int('1111111111', 2)) / 1024.0
-      #     if load_direction == 1: load = -load
-      #     voltage = response[17] / 10.0
-      #     temperature = response[18]
-      #     moving = response[21]
-      #     timestamp = response[-1]
-
-          # return the data in a dictionary
-    """
 if __name__ == '__main__':
   try:
     serial_proxy = DynomixSerialProxy()
     serial_proxy.connect()
-    # rospy.spin()
     serial_proxy.disconnect()
   except rospy.ROSInterruption: pass
