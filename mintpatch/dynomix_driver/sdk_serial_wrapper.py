@@ -150,8 +150,7 @@ class SDKSerialWrapper:
     return response
 
 
-  # TODO: Change to set_goal_position
-  def set_goal_velocity(self, servo_id, goal_position, motor_info):
+  def set_goal_position(self, servo_id, goal_position, motor_info):
     """
     Set the servo with servo_id to the specified goal position.
     Position value must be positive.

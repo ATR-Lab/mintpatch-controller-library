@@ -284,8 +284,8 @@ class DynomixSerialProxy():
 
 
   # TODO: Get these working without calling for serial proxy
-  def set_goal_velocity(self, servo_id, goal_position):
-    return self.sdk_io.set_goal_velocity(servo_id, goal_position, self.motor_info)
+  def set_goal_position(self, servo_id, goal_position):
+    return self.sdk_io.set_goal_position(servo_id, goal_position, self.motor_info)
 
   def set_torque_enabled(self, servo_id, enabled):
     return self.sdk_io.set_torque_enabled(servo_id, self.motor_info, enabled)
