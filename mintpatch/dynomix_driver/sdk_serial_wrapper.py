@@ -136,41 +136,14 @@ class SDKSerialWrapper:
           servo_id,
           address,
           data)
+      else:
+        result = self.packet_handler.writeTxRx(self.port_handler, servo_id, address, size, data)
 
       # wait for response packet from the motor
       timestamp = time.time()
       time.sleep(0.0013)
 
     return data
-
-    # Code above here for reference
-    # Number of bytes following standard header (0xFF, 0xFF, id, length)
-    # length = 3 + len(data)  # instruction, address, len(data), checksum
-
-    # # directly from AX-12 manual:
-    # # Check Sum = ~ (ID + LENGTH + INSTRUCTION + PARAM_1 + ... + PARAM_N)
-    # # If the calculated value is > 255, the lower byte is the check sum.
-    # checksum = 255 - ((servo_id + length + DXL_WRITE_DATA + address + sum(data)) % 256)
-
-    # # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
-    # packet = [0xFF, 0xFF, servo_id, length, DXL_WRITE_DATA, address]
-    # packet.extend(data)
-    # packet.append(checksum)
-
-    # packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-
-    # with self.serial_mutex:
-    #   self.__write_serial(packetStr)
-
-    #   # wait for response packet from the motor
-    #   timestamp = time.time()
-    #   time.sleep(0.0013)
-
-    #   # read response
-    #   data = self.__read_response(servo_id)
-    #   data.append(timestamp)
-
-    #   return data
 
 
   # TODO: Look into this function and figure out how it is used.
@@ -219,15 +192,26 @@ class SDKSerialWrapper:
   ##########################################
   # SINGLE SERVO FUNCTIONS
   ##########################################
-  def set_torque_enabled(self, servo_id, enabled):
+  def set_torque_enabled(self, servo_id, motor_info, enabled):
     """
     Sets the value of the torque enabled register to 1 or 0. When the
     torque is disabled the servo can be moved manually while the motor is
     still powered.
     """
-    response = self.write(servo_id, DXL_TORQUE_ENABLE, [enabled])
+    # Get Model Name and Model Number (e.g., MX_64_T_2 - 311)
+    model_number = motor_info[str(servo_id)]['model_number']
+    model_name = self.dynotools.getModelNameByModelNumber(model_number)
+
+    register_torque_enabled = self.dynotools.getRegisterAddressByModel(model_name, 
+                                                                      "torque_enable")
+    register_torque_enabled_length = self.dynotools.getAddressSizeByModel(model_name, 
+                                                                        "torque_enable")
+
+    response = self.write(servo_id, register_torque_enabled, register_torque_enabled_length, enabled)
+
     # if response:
       # self.exception_on_error(response[4], servo_id, '%sabling torque' % 'en' if enabled else 'dis')
+    
     return response
 
 
@@ -241,20 +225,11 @@ class SDKSerialWrapper:
     model_number = motor_info[str(servo_id)]['model_number']
     model_name = self.dynotools.getModelNameByModelNumber(model_number)
 
-    # TODO: get the register value for certain indexes of the goal position register
     register_goal_position = self.dynotools.getRegisterAddressByModel(model_name, 
                                                                       "goal_position")
     register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, 
                                                                         "goal_position")
-    """
-    response = self.write(servo_id, 
-                          register_goal_position, 
-                          register_goal_position_length, 
-                          self.pos_rad_to_raw(int(goal_position), 
-                          min_angle, max_angle, 
-                          initial_position_raw, flipped, 
-                          encoder_ticks_per_radian))
-    """
+
     response = self.write(servo_id, register_goal_position, register_goal_position_length, goal_position)
     return response
 

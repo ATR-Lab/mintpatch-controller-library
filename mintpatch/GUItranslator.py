@@ -76,6 +76,9 @@ class GUITranslator:
         if self.manager.check_included(pname,sid):
             #attepting to stop a motor that doesn't exist would be bad. many errors.
             
+            # Marcus: Disable torque when stopping the motor
+            self.manager.ports_by_name[pname].proxy.set_torque_enabled(sid, [0])
+
             # TODO: make sure it is fully working
             self.manager.ports_by_name[pname].proxy.set_goal_velocity(sid,0)
                 #Uses a function in the wrapper to set the goal velocity to zero. This will slow the motor to a stop.
@@ -110,11 +113,14 @@ class GUITranslator:
         if self.manager.check_included(pname,sid):
             #Trying to move a motor not attached to the system would be just as bad as stopping one
         
+            # Marcus: Enable torque for motor to have it set goal position
+            self.manager.ports_by_name[pname].proxy.set_torque_enabled(sid, [1])
+
+            # Marcus: Set goal position of the motor
             self.manager.ports_by_name[pname].proxy.set_goal_velocity(sid,int(speed))
-                # WIP
 
             self.running_motors.append(servo_name)
-                #We add the motor to a list of currently running motors.
+            #We add the motor to a list of currently running motors.
 
 
     #Prints the full information set for one named servo.

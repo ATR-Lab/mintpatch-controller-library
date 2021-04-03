@@ -289,6 +289,9 @@ class DynomixSerialProxy():
                                         self.max_angle, self.initial_position_raw, 
                                         self.flipped, self.encoder_ticks_per_radian)
 
+  def set_torque_enabled(self, servo_id, enabled):
+    return self.sdk_io.set_torque_enabled(servo_id, self.motor_info, enabled)
+
   def get_feedback(self, servo_id):
       """
       Returns the id, goal, position, error, speed, load, voltage, temperature
