@@ -423,9 +423,6 @@ class SDKSerialWrapper:
       else:
         speed = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
 
-    # If speed is higher than 1032, return 1023 - speed, otherwise just return speed
-    if speed > 1023:
-      return 1023 - speed
     return speed
 
   def get_temperature(self, servo_id, model_name):
