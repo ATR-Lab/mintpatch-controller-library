@@ -63,14 +63,14 @@ class DynomixSerialProxy():
 
     self.actual_rate        = update_rate 
     self.error_counts       = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
-    self.current_state = MotorStateList()
-    self.num_ping_retries = 5
-    self.dynotools = dynamixel_tools.DynamixelTools()
-    self.sdk_io = sdk_serial_wrapper.SDKSerialWrapper(port_name, baud_rate)
-    self.angles = {}
+    self.current_state      = MotorStateList()
+    self.num_ping_retries   = 5
+    self.dynotools          = dynamixel_tools.DynamixelTools()
+    self.sdk_io             = sdk_serial_wrapper.SDKSerialWrapper(port_name, baud_rate)
+    self.angles             = {}
 
     # Start to publish motor states
-    self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size=1)
+    self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size = 1)
 
 
   def connect(self):
