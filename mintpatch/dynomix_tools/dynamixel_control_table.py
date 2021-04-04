@@ -65,7 +65,7 @@ MOTOR_CONTROL_TABLE = {
       "size": 2
     },
     "profile_velocity": {
-      "address": 602,
+      "address": 600,
       "size": 4
     },
     "present_velocity": {
