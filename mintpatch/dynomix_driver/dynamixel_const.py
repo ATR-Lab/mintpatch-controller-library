@@ -392,7 +392,8 @@ DXL_MODEL_TO_PARAMS = \
     'rpm_per_tick':       0.111,
     'features':           []
   },
-  117: { 'name':               'DX-117',
+  117: { 
+    'name':               'DX-117',
     'encoder_resolution': 1024,
     'range_degrees':      300.0,
     'torque_per_volt':    3.7 / 18.5,                       #  3.7 NM @ 18.5V

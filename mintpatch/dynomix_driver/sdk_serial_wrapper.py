@@ -144,6 +144,7 @@ class SDKSerialWrapper:
 
     response = self.write(servo_id, register_torque_enabled, register_torque_enabled_length, enabled)
 
+    # TODO: Either implement or remove error handling
     # if response:
       # self.exception_on_error(response[4], servo_id, '%sabling torque' % 'en' if enabled else 'dis')
     
@@ -209,9 +210,6 @@ class SDKSerialWrapper:
     # Read using present position
     raw_response = self.read(servo_id, register_present_goal, register_present_goal_length)
     response = raw_response[0]
-
-    # rospy.logwarn("DEBUG GOAL ID: " + str(servo_id))
-    # rospy.logwarn("DEBUG GOAL : " + str(response))
 
     # TODO: Either implement or remove error handling
     # if response:
@@ -367,9 +365,6 @@ class SDKSerialWrapper:
     # Read using present position
     raw_response = self.read(servo_id, register_present_position - 2, register_present_position_length)
     response = raw_response[0]
-
-    # rospy.logwarn("DEBUG POSITION ID: " + str(servo_id))
-    # rospy.logwarn("DEBUG POSITION : " + str(response))
 
     # TODO: Either implement or remove error handling
     # if response:

@@ -9,6 +9,7 @@ Cleaned up by: M. Arnett
 # Imports from custom classes
 from GUItranslator import GUITranslator
 from robotManager import RobotManager
+from emulatedMotor import EmulatedMotor
 
 # Import standard libraries
 import json, sys
