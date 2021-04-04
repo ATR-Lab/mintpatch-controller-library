@@ -48,21 +48,25 @@ class DynamixelTools:
     else: 
       return zero_position
 
+  def convertRawPosition2Degree(self, raw_position):
+    return raw_position * 0.088
+
+  def raw_to_rad(self, raw, initial_position_raw, flipped, radians_per_encoder_tick):
+    return (initial_position_raw - raw if flipped else raw - initial_position_raw) * radians_per_encoder_tick
+
   ########################################################################
   #
   ########################################################################
-  def getAddressSizeByModel(self, raw_servo_model, register_name):
-    servo_model = MODEL_NUMBER_2_MOTOR_NAME[raw_servo_model]['name']
-    return MOTOR_CONTROL_TABLE[str(servo_model)][register_name]['size']
+  def getAddressSizeByModel(self, servo_model, register_name):
+    return MOTOR_CONTROL_TABLE[servo_model][register_name]['size']
 
-  def getRegisterAddressByModel(self, raw_servo_model, register_name):
-    servo_model = MODEL_NUMBER_2_MOTOR_NAME[raw_servo_model]['name']
-    return  MOTOR_CONTROL_TABLE[str(servo_model)][register_name]['address']
+  def getRegisterAddressByModel(self, servo_model, register_name):
+    return  MOTOR_CONTROL_TABLE[servo_model][register_name]['address']
 
-  def getModelNameByModelNumber(self, raw_servo_model):
-    return MODEL_NUMBER_2_MOTOR_NAME[raw_servo_model]['name']
+  def getModelNameByModelNumber(self, servo_model):
+    return MODEL_NUMBER_2_MOTOR_NAME[servo_model]['name']
 
-  def getSumaryAddressSizeByModel(self, raw_servo_model):
+  def getSumaryAddressSizeByModel(self, servo_model):
     """
     The n bits of the registers that allows for a single read
     {'timestamp': timestamp,
@@ -76,8 +80,7 @@ class DynamixelTools:
     'temperature': temperature,
     'moving': bool(moving) }
     """
-    servo_model = MODEL_NUMBER_2_MOTOR_NAME[raw_servo_model]['name']
-    return  MOTOR_CONTROL_TABLE[str(servo_model)]['summary_size']
+    return  MOTOR_CONTROL_TABLE[servo_model]['summary_size']
 
   def test_bit(self, number, offset):
     mask = 1 << offset

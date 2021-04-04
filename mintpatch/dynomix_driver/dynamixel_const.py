@@ -344,7 +344,7 @@ DXL_MODEL_TO_PARAMS = \
     'torque_per_volt': 44.7 / 12.0,  # TODO: Needs to be completed, values not found in specs sheets (voltages might be different)
     'velocity_per_volt': (29.0 * RPM_TO_RADSEC) / 12.0, # TODO: Needs to be completed, values not found in specs sheets (voltages might be different)
     'rpm_per_tick': 0.00199234,
-    'features': []
+    'features': [DXL_CURRENT_L]
   },
   311: {
     "name": "MX_64_T_2",
@@ -361,7 +361,7 @@ DXL_MODEL_TO_PARAMS = \
     'range_degree': 360,
     'torque_per_volt': 10.6 / 12.0,
     'velocity_per_volt': (30 * RPM_TO_RADSEC) / 12.0,
-    'features': []
+    'features': [DXL_CURRENT_L]
   },
 
 
@@ -397,15 +397,6 @@ DXL_MODEL_TO_PARAMS = \
     'range_degrees':      300.0,
     'torque_per_volt':    3.7 / 18.5,                       #  3.7 NM @ 18.5V
     'velocity_per_volt':  (85 * RPM_TO_RADSEC) / 18.5,      #  85 RPM @ 18.5V
-    'rpm_per_tick':       0.111,
-    'features':           []
-  },
-  12: { 
-    'name':               'AX-12',
-    'encoder_resolution': 1024,
-    'range_degrees':      300.0,
-    'torque_per_volt':    1.5 / 12.0,                       #  1.5 NM @ 12V
-    'velocity_per_volt':  (59 * RPM_TO_RADSEC) / 12.0,      #  59 RPM @ 12V
     'rpm_per_tick':       0.111,
     'features':           []
   },
