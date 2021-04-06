@@ -1,7 +1,7 @@
 """
 Responsible for communication between the GUI and library.
-Currently reads from JSON and outputs to consule.
-Test version uses a python consule.
+Currently reads from JSON and outputs to console.
+Test version uses a python console.
 Author: Nathan Moder
 Assistance: M. Arnett
 4/6/2021
@@ -75,7 +75,7 @@ class GUITranslator:
         return json.loads(jin)
 
     
-    def move_motor(self, consule_input, input_length):
+    def move_motor(self, console_input, input_length):
         """
         Function member will enable torque, and then change the goal position,
         which then appends the servo to a list of running motors.
@@ -87,7 +87,7 @@ class GUITranslator:
             return True
 
         #extract the needed name from the input
-        servo_name=consule_input[1]
+        servo_name=console_input[1]
         
         #These values hold the same role as in stop_motor.
         pname = servo_name[:-4]
@@ -100,8 +100,11 @@ class GUITranslator:
             # Enable torque for motor to have it set goal position.
             self.manager.ports_by_name[pname].proxy.set_torque_enabled(sid, [1])
 
+            raw_angle = int(console_input[2]) / (88/1000)
+
             # Set goal position of the motor
-            self.manager.ports_by_name[pname].proxy.set_goal_position(sid,int(consule_input[2]*(1000/88)))
+            # self.manager.ports_by_name[pname].proxy.set_goal_position(sid,int(console_input[2]*(1000/88)))
+            self.manager.ports_by_name[pname].proxy.set_goal_position(sid,(int(console_input[2])))
 
             # We add the motor to a list of currently running motors.
             self.running_motors.append(servo_name)
@@ -136,7 +139,7 @@ class GUITranslator:
             print("No such servo")
         
 
-    def scan(self, consule_input, input_length):
+    def scan(self, console_input, input_length):
         """
         Gathers information on every motor attached to the system,
         setting up the Logs. It *must* be run in order for
@@ -167,7 +170,7 @@ class GUITranslator:
         return True
 
 
-    def running_update(self, consule_input, input_length):
+    def running_update(self, console_input, input_length):
         
         # Uses the Drivers to update *only* the motors
         # which are running, and therefore changing.
@@ -181,13 +184,13 @@ class GUITranslator:
         return True
 
 
-    def end_listening(self, consule_input, input_length):
+    def end_listening(self, console_input, input_length):
         #Just returns false, causing the listener to exit its loop
         # and the program to end.
         return False
 
 
-    def ignore(self, consule_input, input_length):
+    def ignore(self, console_input, input_length):
         #Used to prevent errors in the switch.
         return True
 

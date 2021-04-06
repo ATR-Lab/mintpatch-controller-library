@@ -30,6 +30,25 @@ from dynomix_driver.dynamixel_const import *
   # import roslib
   # roslib.load_manifest('dynamixel_drive')
 
+# TODO: End goal is to have two functions, one called rawPos2Degree and one called
+# Degree2RawPos. The function shall be called in the proxy, and then called into the
+# SDK Serial Wrapper for further translations. If the motor uses pulses for determining
+# Angles (e.g. fetch from dynamixel_const.py MODELS_TO_PARAM dictionary) or if they
+# use the constant of 1 unit = 0.088 degrees. If it's the latter, return either the
+# raw position (degree / 0.088) or the degree (raw_pos * 0.088); but if it's puleses
+# then go fetch the value from the table and return either the raw position
+# (degree / pulse_unit) or the degree (raw_pos * pulse_unit). And pulse units are
+# typically 180/max_position_limit (though it might be a fraction off, such as
+# with the H54 having the formula as 'raw_pos * 180/250961.5', so we'll have the
+# pulse units already calculated and listed in the model_to_param table).
+# Function List:
+# - input: raw_pos, servo_id, model_info (note: will only be needed in the proxy, 
+# only raw_pos is required for the call)
+# - model_name <- model_info[servo_id]
+# - if model_to_param[model_name][pulse] fetches nothing, return needed calculation above.
+# - if pulse unit is found, then return needed calculations above with pulse variable.
+# - Output: either translated degree or translated raw position
+
 
 class DynomixSerialProxy():
   """
