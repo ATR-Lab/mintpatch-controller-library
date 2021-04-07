@@ -1,5 +1,6 @@
 """
 Dynamixel Constants
+Author: M. Arnett
 """
 # Control Table Constants
 DXL_MODEL_NUMBER_L = 0
