@@ -1,3 +1,5 @@
+#Author: M. Arnett
+#Assistance: Nathan Moder
 # Import standard and threading libraries
 import time
 import serial
