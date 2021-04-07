@@ -1,4 +1,5 @@
 #Author: M. Arnett
+#Assistance: Nathan Moder
 # Standard Library imports
 import math
 import sys
