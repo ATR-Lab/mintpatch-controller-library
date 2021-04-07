@@ -37,7 +37,7 @@ class ServoLog:
         # Every element is seperated by a space.
         print('{id} {state} {voltage} {temp} {pos} {speed}'.format(id = self.output_name, 
         state = state, voltage = idict["voltage"], temp = idict["temperature"], 
-        pos = idict["position"]*.088, speed = idict["speed"]))
+        pos = idict["position"], speed = idict["speed"]))
 
 
 # Uses funcitons from RobotManager and the wrapper, but does not need to import them.
