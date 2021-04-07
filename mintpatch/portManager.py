@@ -8,8 +8,8 @@ Second Author(handling ROS): M. Arnett
 
 
 # Imports for Emulated Motors
-# from fakeWrapper import SDKSerialWrapper
-# from fakeProxy import DynomixSerialProxy
+from fakeWrapper import SDKSerialWrapper
+from fakeProxy import DynomixSerialProxy
 
 
 # Imports for Real Motors
