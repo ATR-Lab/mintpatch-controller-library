@@ -1,3 +1,5 @@
+#Nathan Moder
+
 from emulatedMotor import tm1
 from emulatedMotor import tm2
 from emulatedMotor import tm3
