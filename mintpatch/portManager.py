@@ -13,9 +13,9 @@ Second Author(handling ROS): M. Arnett
 
 
 # Imports for Real Motors
-from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
-from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
-import rospy
+# from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
+# from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
+# import rospy
 
 
 class PortManager:
