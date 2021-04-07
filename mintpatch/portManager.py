@@ -2,7 +2,7 @@
 Holds the Serial Proxies and the SDK Wrapper assigned
 assigned to a single Port.
 Author: Nathan Moder 
-Assistance: M. Arnett
+Second Author(handling ROS): M. Arnett
 3/28/2021
 """
 
