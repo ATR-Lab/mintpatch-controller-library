@@ -1,6 +1,5 @@
-"""
-This is all purely test
-"""
+#Nathan Moder
+
 from emulatedMotor import EmulatedMotor
 from emulatedMotor import tm1
 from emulatedMotor import tm2
@@ -26,10 +25,10 @@ class SDKSerialWrapper:
             if 1==int(servo_id):
                 #print("into if")
                 tm1.set_goal_speed(goal)
-            elif int(servo_id)==5:
+            elif int(servo_id)==15:
                 tm2.set_goal_speed(goal)
         elif self.port=="/dev/port_2":
-            if int(servo_id)==1:
+            if int(servo_id)==110:
                 tm3.set_goal_speed(goal)
 
     def get_feedback(self,servo_id):
@@ -48,7 +47,7 @@ class SDKSerialWrapper:
                     'temperature' : tm1.temperature,
                     'moving' : tm1.moving
                 }
-            if int(servo_id)==5:
+            if int(servo_id)==15:
                 if tm2.moving:
                     tm2.check_while_running()
                 return {
@@ -63,7 +62,7 @@ class SDKSerialWrapper:
                     'moving' : tm2.moving
                 }
         if self.port=="/dev/port_2":
-            if int(servo_id)==1:
+            if int(servo_id)==110:
                 if tm3.moving:
                     tm3.check_while_running()
                 return {
