@@ -3,7 +3,6 @@ Responsible for communication between the GUI and library.
 Currently reads from JSON and outputs to console.
 Test version uses a python console.
 Author: Nathan Moder
-Assistance: M. Arnett
 4/6/2021
 """
 
