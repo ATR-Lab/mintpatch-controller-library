@@ -1,8 +1,8 @@
 """
 Holds the Serial Proxies and the SDK Wrapper assigned
 assigned to a single Port.
-Original Author: Nathan Moder 
-Cleaned up by: M. Arnett
+Author: Nathan Moder 
+Assistance: M. Arnett
 3/28/2021
 """
 
