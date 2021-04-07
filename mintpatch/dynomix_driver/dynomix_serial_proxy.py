@@ -1,3 +1,4 @@
+#Author: M. Arnett
 # Standard Library imports
 import math
 import sys
