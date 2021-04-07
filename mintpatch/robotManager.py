@@ -2,8 +2,7 @@
 Creates the Servo Manager, which will store information about
 which port each servo is attached to.
 It also handles the startup of MintPatch.
-Original Author: Nathan Moder
-Cleaned up by: M. Arnett
+Author: Nathan Moder
 3/29/2021
 """
 
