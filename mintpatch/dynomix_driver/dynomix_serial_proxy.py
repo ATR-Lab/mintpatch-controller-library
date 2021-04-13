@@ -32,7 +32,7 @@ from dynomix_driver.dynamixel_const import *
 
 # TODO: End goal is to have two functions, one called rawPos2Degree and one called
 # Degree2RawPos. The function shall be called in the proxy, and then called into the
-# SDK Serial Wrapper for further translations. If the motor uses pulses for determining
+# Dynamixel for further translations. If the motor uses pulses for determining
 # Angles (e.g. fetch from dynamixel_const.py MODELS_TO_PARAM dictionary) or if they
 # use the constant of 1 unit = 0.088 degrees. If it's the latter, return either the
 # raw position (degree / 0.088) or the degree (raw_pos * 0.088); but if it's puleses
@@ -138,7 +138,6 @@ class DynomixSerialProxy():
     rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
     rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
     rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
-
     torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
     rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
     rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)

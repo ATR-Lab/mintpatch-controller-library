@@ -31,7 +31,7 @@ class PortManager:
 
         # Initializes a ROS node for this port.
         # Necessary for the real Wrapper and Proxy to work.
-        # rospy.init_node('portManager', anonymous=True)
+        rospy.init_node('portManager', anonymous=True)
         
         # Constructs a wrapper for the port using the settings provided
         self.wrapper = SDKSerialWrapper('/dev/{_port_name}'.format(_port_name=_port_name),

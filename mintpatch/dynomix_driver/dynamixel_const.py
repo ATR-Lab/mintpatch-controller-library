@@ -344,6 +344,7 @@ DXL_MODEL_TO_PARAMS = \
     'torque_per_volt': 44.7 / 12.0,  # TODO: Needs to be completed, values not found in specs sheets (voltages might be different)
     'velocity_per_volt': (29.0 * RPM_TO_RADSEC) / 12.0, # TODO: Needs to be completed, values not found in specs sheets (voltages might be different)
     'rpm_per_tick': 0.00199234,
+    'pulse_const': 180.0 / 250961.5,
     'features': [DXL_CURRENT_L]
   },
   311: {
