@@ -29,6 +29,14 @@ class SDKSerialWrapper:
     self.port = port
     self.baudrate = baudrate
     self.dynotools = dynamixel_tools.DynamixelTools()
+    self.raw_to_deg_switch={
+      '54024' : self.raw_to_deg_pulse,
+      '311' : self.raw_to_deg_static
+    }
+    self.deg_to_raw_switch={
+      '54024' : self.deg_to_raw_pulse,
+      '311' : self.deg_to_raw_static
+    }
 
 
   def read(self, servo_id, address, size):
@@ -167,7 +175,7 @@ class SDKSerialWrapper:
 
     # raw_pos = goal_position / (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
 
-    raw_pos = self.deg_to_raw_pulse(model_number, goal_position)
+    raw_pos=self.deg_to_raw_switch[str(model_number)](model_number,goal_position)
 
     response = self.write(servo_id, register_goal_position, register_goal_position_length, int(raw_pos))
 
@@ -326,7 +334,8 @@ class SDKSerialWrapper:
 
     # return the data in a dictionary
     return {'min': angle_min, 'max': angle_max}
-
+  
+  
 
   def get_voltage_limits(self, servo_id, model_name):
     """
@@ -493,7 +502,7 @@ class SDKSerialWrapper:
     temperature = self.get_temperature(servo_id, model_name)
     moving = self.get_moving(servo_id, model_name)
 
-    degree_position = self.raw_to_deg_pulse(model_number, position)
+    degree_position=self.raw_to_deg_switch[str(model_number)](model_number,position)
 
     # Return above in a container form
     return { 'timestamp': 0,
@@ -509,23 +518,26 @@ class SDKSerialWrapper:
   
 
   def raw_to_deg_pulse(self, model_number, raw_pos):
-    base_degree = DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088) * raw_pos
+    base_degree=DXL_MODEL_TO_PARAMS[str(model_number)].get('pulse_const',.088)*raw_pos
     if base_degree < 0:
-      base_degree = (-base_degree)
+      base_degree=-base_degree
     elif base_degree > 0:
-      base_degree = 360 - base_degree
+      base_degree=360-base_degree
     return base_degree
-
-
+  
   def deg_to_raw_pulse(self, model_number, deg_pos):
     if deg_pos > 180:
-      deg_pos = 360 - deg_pos
+      deg_pos=360-deg_pos
     else:
-      deg_pos = (-deg_pos)
-    print("DEBUG PRINT FOR DEG_POS: " + str(deg_pos))
-    return deg_pos / DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088)
+      deg_pos=-deg_pos
+    return deg_pos/DXL_MODEL_TO_PARAMS[str(model_number)].get('pulse_const',.088)
+  
+  def raw_to_deg_static(self, model_number, raw_pos):
+    return raw_pos*.088
 
-
+  def deg_to_raw_static(self, model_number, deg_pos):
+    return deg_pos/.088  
+  
   # TODO: look into if we need this function and below classes for error handling,
   #       and if so, how to implement them properly without serial calls.
   def exception_on_error(self, error_code, servo_id, command_failed):
