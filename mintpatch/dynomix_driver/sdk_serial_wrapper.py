@@ -165,8 +165,10 @@ class SDKSerialWrapper:
     register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, 
                                                                         "goal_position")
 
-    raw_pos = goal_position / (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
-                                                                        
+    # raw_pos = goal_position / (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
+
+    raw_pos = self.deg_to_raw_pulse(model_number, goal_position)
+
     response = self.write(servo_id, register_goal_position, register_goal_position_length, int(raw_pos))
 
     return response
@@ -491,7 +493,7 @@ class SDKSerialWrapper:
     temperature = self.get_temperature(servo_id, model_name)
     moving = self.get_moving(servo_id, model_name)
 
-    degree_position = position * (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
+    degree_position = self.raw_to_deg_pulse(model_number, position)
 
     # Return above in a container form
     return { 'timestamp': 0,
@@ -504,6 +506,24 @@ class SDKSerialWrapper:
              'voltage': voltage,
              'temperature': temperature,
              'moving': bool(moving) }
+  
+
+  def raw_to_deg_pulse(self, model_number, raw_pos):
+    base_degree = DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088) * raw_pos
+    if base_degree < 0:
+      base_degree = (-base_degree)
+    elif base_degree > 0:
+      base_degree = 360 - base_degree
+    return base_degree
+
+
+  def deg_to_raw_pulse(self, model_number, deg_pos):
+    if deg_pos > 180:
+      deg_pos = 360 - deg_pos
+    else:
+      deg_pos = (-deg_pos)
+    print("DEBUG PRINT FOR DEG_POS: " + str(deg_pos))
+    return deg_pos / DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088)
 
 
   # TODO: look into if we need this function and below classes for error handling,
