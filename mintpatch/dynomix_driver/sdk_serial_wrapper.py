@@ -377,7 +377,7 @@ class SDKSerialWrapper:
     register_present_position_length = self.dynotools.getAddressSizeByModel(model_name, "present_position")
     
     # Read using present position
-    raw_response = self.read(servo_id, register_present_position - 2, register_present_position_length)
+    raw_response = self.read(servo_id, register_present_position, register_present_position_length)
     response = raw_response[0]
 
     # TODO: Either implement or remove error handling

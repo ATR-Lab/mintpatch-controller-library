@@ -41,7 +41,7 @@ MOTOR_CONTROL_TABLE = {
   },
   "H54_200_S500_R_2": {
     "present_position": {
-      "address": 613,
+      "address": 611,
       "size": 4
     },
     "angle_limit_max": {
@@ -99,7 +99,7 @@ MOTOR_CONTROL_TABLE = {
   },
   "MX_64_T_2": {
     "present_position": {
-      "address": 134,
+      "address": 132,
       "size": 4
     },
     "angle_limit_max": {
