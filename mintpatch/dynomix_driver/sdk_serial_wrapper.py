@@ -518,7 +518,7 @@ class SDKSerialWrapper:
   
 
   def raw_to_deg_pulse(self, model_number, raw_pos):
-    base_degree=DXL_MODEL_TO_PARAMS[str(model_number)].get('pulse_const',.088)*raw_pos
+    base_degree=DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088)*raw_pos
     if base_degree < 0:
       base_degree=-base_degree
     elif base_degree > 0:
@@ -530,13 +530,13 @@ class SDKSerialWrapper:
       deg_pos=360-deg_pos
     else:
       deg_pos=-deg_pos
-    return deg_pos/DXL_MODEL_TO_PARAMS[str(model_number)].get('pulse_const',.088)
+    return deg_pos/DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088)
   
   def raw_to_deg_static(self, model_number, raw_pos):
-    return raw_pos*.088
+    return raw_pos * .088
 
   def deg_to_raw_static(self, model_number, deg_pos):
-    return deg_pos/.088  
+    return deg_pos / .088  
   
   # TODO: look into if we need this function and below classes for error handling,
   #       and if so, how to implement them properly without serial calls.
