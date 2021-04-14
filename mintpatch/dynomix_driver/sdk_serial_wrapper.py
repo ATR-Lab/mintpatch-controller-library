@@ -164,8 +164,11 @@ class SDKSerialWrapper:
                                                                       "goal_position")
     register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, 
                                                                         "goal_position")
+
+    raw_pos = goal_position / (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
                                                                         
-    response = self.write(servo_id, register_goal_position, register_goal_position_length, goal_position)
+    response = self.write(servo_id, register_goal_position, register_goal_position_length, int(raw_pos))
+
     return response
 
 
@@ -488,11 +491,13 @@ class SDKSerialWrapper:
     temperature = self.get_temperature(servo_id, model_name)
     moving = self.get_moving(servo_id, model_name)
 
+    degree_position = position * (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
+
     # Return above in a container form
     return { 'timestamp': 0,
              'id': servo_id,
              'goal': goal,
-             'position': position,
+             'position': int(degree_position),
              'error': error,
              'speed': speed,
              'load': 0,

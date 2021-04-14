@@ -19,14 +19,14 @@ def main():
     # Setttings for configuring our pinging to the motors.
     settings_set = {}
 
-    # WIP: Get the port name through a system call
+    # Get the port name through a system call
     raw_port_command = os.popen("ls /dev/ttyUSB*")
-    port = raw_port_command.read()
-    port = port.replace('\n', '')
-    port = port.replace('/dev/', '')
+    raw_ports = raw_port_command.read()
+    port_list_raw = raw_ports.split()
+    port_list = []
 
     # Real motors, and matches the launch file simple_l_arm_controller_manager.launch
-    port_list = {port}
+    # port_list = {port}
     settings = {
         'baudrate': 1000000,
         'minID': 1,
@@ -34,7 +34,12 @@ def main():
         'updateRate' : 20,
         'diagnosticsRate' : 1
     }
-    settings_set[port] = settings
+
+    # Get Port List without /dev/
+    for raw_port in port_list_raw:
+        port = raw_port.replace('/dev/', '')
+        settings_set[port] = settings
+        port_list.append(port)
 
     # Making robot manager, and basically listening in on the GUI translator
     manager = RobotManager(port_list, settings_set)

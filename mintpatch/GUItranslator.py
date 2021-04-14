@@ -37,7 +37,7 @@ class ServoLog:
         # Every element is seperated by a space.
         print('{id} {state} {voltage} {temp} {pos} {speed}'.format(id = self.output_name, 
         state = state, voltage = idict["voltage"], temp = idict["temperature"], 
-        pos = idict["position"]*.088, speed = idict["speed"]))
+        pos = idict["position"], speed = idict["speed"]))
 
 
 # Uses funcitons from RobotManager and the wrapper, but does not need to import them.
@@ -99,8 +99,6 @@ class GUITranslator:
 
             # Enable torque for motor to have it set goal position.
             self.manager.ports_by_name[pname].proxy.set_torque_enabled(sid, [1])
-
-            raw_angle = int(console_input[2]) / (88/1000)
 
             # Set goal position of the motor
             # self.manager.ports_by_name[pname].proxy.set_goal_position(sid,int(console_input[2]*(1000/88)))
