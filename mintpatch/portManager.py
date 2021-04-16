@@ -8,14 +8,14 @@ Cleaned up by: M. Arnett
 
 
 # Imports for Emulated Motors
-from fakeWrapper import SDKSerialWrapper
-from fakeProxy import DynomixSerialProxy
+# from fakeWrapper import SDKSerialWrapper
+# from fakeProxy import DynomixSerialProxy
 
 
 # Imports for Real Motors
-#from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
-#from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
-#import rospy
+from dynomix_driver.sdk_serial_wrapper import SDKSerialWrapper
+from dynomix_driver.dynomix_serial_proxy import DynomixSerialProxy
+import rospy
 
 
 class PortManager:
@@ -31,7 +31,7 @@ class PortManager:
 
         # Initializes a ROS node for this port.
         # Necessary for the real Wrapper and Proxy to work.
-        #rospy.init_node('portManager', anonymous=True)
+        # rospy.init_node('portManager', anonymous=True)
         
         # Constructs a wrapper for the port using the settings provided
         self.wrapper = SDKSerialWrapper('/dev/{_port_name}'.format(_port_name=_port_name),

@@ -1,3 +1,10 @@
+# Import custom libraries and Port / Packet Handler
+from .dyn_const import *
+import dynamixel_sdk.port_handler as port_h
+import dynamixel_sdk.packet_handler as packet_h
+from dynamixel_sdk import *
+from dynomix_tools import dynamixel_tools
+
 # Import standard and threading libraries
 import time
 import serial
@@ -5,13 +12,6 @@ from array import array
 from binascii import b2a_hex
 from threading import Lock
 import rospy
-
-# Import custom libraries and Port / Packet Handler
-import dynamixel_sdk.port_handler as port_h
-import dynamixel_sdk.packet_handler as packet_h
-from dynamixel_sdk import *
-from dynamixel_const import *
-from dynomix_tools import dynamixel_tools
 
 
 class SDKSerialWrapper:
@@ -43,6 +43,7 @@ class SDKSerialWrapper:
     """Read "size" bytes of data from servo with a given "servo_id" at
     the register with "address". "address" is an integer between 0 and 57.
     It is recommended to use the constant in module for readability
+
     e.g: to read from servo with 1,
       read(1, MX_106_GOAL_POSITION, 2)
     """
@@ -108,12 +109,12 @@ class SDKSerialWrapper:
     To set servo with id 1 to position 276 and servo with id 2 to position
     550, the method should be called like:
         sync_write(DXL_GOAL_POSITION_L, ( (1, 20, 1), (2 ,38, 2) ))
-    """
+    
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION)
 
     with self.serial_mutex:
       self.__write_serial(packetStr)
-
+    """
 
   def ping(self, servo_id):
     """ Ping the servo with "servo_id". This causes the servo to return a
@@ -172,9 +173,7 @@ class SDKSerialWrapper:
     register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, 
                                                                         "goal_position")
 
-    # raw_pos = goal_position / (DXL_MODEL_TO_PARAMS[motor_info[str(servo_id)]['model_number']].get('pulse_const',.088))
-
-    raw_pos=self.deg_to_raw_switch[str(model_number)](model_number,goal_position)
+    raw_pos = self.deg_to_raw_switch[str(model_number)](model_number, goal_position, motor_info[str(servo_id)]['max_angle'])
 
     response = self.write(servo_id, register_goal_position, register_goal_position_length, int(raw_pos))
 
@@ -185,56 +184,75 @@ class SDKSerialWrapper:
   # Servo status access functions #
   #################################
   # TODO: Implement these functions, maybe?
+  """
   def get_model_number(self, servo_id):
-    """ Reads the servo's model number (e.g. 12 for AX-12+). """
+    # Reads the servo's model number (e.g. 12 for AX-12+).
     response = self.read(servo_id, DXL_MODEL_NUMBER_L, 2)
     if response:
       self.exception_on_error(response[4], servo_id, 'fetching model number')
     return response[5] + (response[6] << 8)
 
   def get_firmware_version(self, servo_id):
-    """ Reads the servo's firmware version. """
+    # Reads the servo's firmware version.
     response = self.read(servo_id, DXL_VERSION, 1)
     if response:
       self.exception_on_error(response[4], servo_id, 'fetching firmware version')
     return response[5]
 
   def get_return_delay_time(self, servo_id):
-    """ Reads the servo's return delay time. """
+    # Reads the servo's return delay time.
     response = self.read(servo_id, DXL_RETURN_DELAY_TIME, 1)
     if response:
       self.exception_on_error(response[4], servo_id, 'fetching return delay time')
     return response[5]
 
   def get_drive_mode(self, servo_id):
-    """ Reads the servo's drive mode. """
+    # Reads the servo's drive mode.
     response = self.read(servo_id, DXL_DRIVE_MODE, 1)
     if response:
       self.exception_on_error(response[4], servo_id, 'fetching drive mode')
     return response[5]
+  """
+
 
   def get_goal(self, servo_id, model_name):
-    """ Reads the servo's goal value from its registers. """
+    """ Reads the servo's position value from its registers. """
     # Register Address and Length variables
-    register_present_goal = self.dynotools.getRegisterAddressByModel(model_name, "goal_position")
-    register_present_goal_length = self.dynotools.getAddressSizeByModel(model_name, "goal_position")
+    register_goal_position = self.dynotools.getRegisterAddressByModel(model_name, "goal_position")
+    register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, "goal_position")
     
     # Read using present position
-    raw_response = self.read(servo_id, register_present_goal, register_present_goal_length)
+    raw_response = self.read(servo_id, register_goal_position, register_goal_position_length)
     response = raw_response[0]
 
     # TODO: Either implement or remove error handling
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present position')
+    
+    try:
+      if register_goal_position_length == 2:
+        position = response[0] + (response[1] << 8)
 
-    # Caculate by bit shift left first index by eight, then add result to index 0
-    # Example with [66, 6, 0, 0]: 66 << 8 = 1536; 1536 + 66 = 1602
-    goal = response[0] + (response[1] << 8)
-
-    return self.dynotools.convertRawPosition2Degree(goal)
+      elif register_goal_position_length == 4:      
+        if response[3] >= 1:
+          goal_position_ref = [255, 255, 255, 255]
+          response[0] = goal_position_ref[0] - response[0]
+          response[1] = goal_position_ref[1] - response[1]
+          response[2] = goal_position_ref[2] - response[2]
+          response[3] = goal_position_ref[3] - response[3]
+          position = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+          position *= -1
+      
+        else:
+          position = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+    
+    except:
+      position = 0
+    
+    return position
 
   def get_current(self, servo_id, model_number, model_name):
-    """ Reads the servo's current consumption (if supported by model) """
+    """ Reads the servo's current consumption (if supported by model)
     # Make sure model is supported
     if not model_number in DXL_MODEL_TO_PARAMS:
       raise UnsupportedFeatureError(model_number, DXL_CURRENT_L)
@@ -280,7 +298,7 @@ class SDKSerialWrapper:
     # No known way of supporting current
     else:
       raise UnsupportedFeatureError(model_number, DXL_CURRENT_L)
-
+    """
 
   def get_angle_limits(self, servo_id, model_name):
     """
@@ -383,21 +401,25 @@ class SDKSerialWrapper:
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present position')
     
-    if register_present_position_length == 2:
-      position = response[0] + (response[1] << 8)
+    try:
+      if register_present_position_length == 2:
+        position = response[0] + (response[1] << 8)
 
-    elif register_present_position_length == 4:      
-      if response[3] >= 1:
-        present_position_ref = [255, 255, 255, 255]
-        response[0] = present_position_ref[0] - response[0]
-        response[1] = present_position_ref[1] - response[1]
-        response[2] = present_position_ref[2] - response[2]
-        response[3] = present_position_ref[3] - response[3]
-        position = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
-        position *= -1
+      elif register_present_position_length == 4:      
+        if response[3] >= 1:
+          present_position_ref = [255, 255, 255, 255]
+          response[0] = present_position_ref[0] - response[0]
+          response[1] = present_position_ref[1] - response[1]
+          response[2] = present_position_ref[2] - response[2]
+          response[3] = present_position_ref[3] - response[3]
+          position = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+          position *= -1
       
-      else:
-        position = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+        else:
+          position = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+    
+    except:
+      position = 0
     
     return position
 
@@ -415,21 +437,25 @@ class SDKSerialWrapper:
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present speed')
 
-    if register_present_speed_length == 2:
-      speed = response[0] + (response[1] << 8)
+    try:
+      if register_present_speed_length == 2:
+        speed = response[0] + (response[1] << 8)
 
-    elif register_present_speed_length == 4:      
-      if response[3] >= 1:
-        present_speed_ref = [255, 255, 255, 255]
-        response[0] = present_speed_ref[0] - response[0]
-        response[1] = present_speed_ref[1] - response[1]
-        response[2] = present_speed_ref[2] - response[2]
-        response[3] = present_speed_ref[3] - response[3]
-        speed = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
-        speed *= -1
+      elif register_present_speed_length == 4:      
+        if response[3] >= 1:
+          present_speed_ref = [255, 255, 255, 255]
+          response[0] = present_speed_ref[0] - response[0]
+          response[1] = present_speed_ref[1] - response[1]
+          response[2] = present_speed_ref[2] - response[2]
+          response[3] = present_speed_ref[3] - response[3]
+          speed = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+          speed *= -1
       
-      else:
-        speed = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+        else:
+          speed = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+
+    except:
+      speed = 0
 
     return speed
 
@@ -445,6 +471,8 @@ class SDKSerialWrapper:
 
     # Get the index 0, being the temperature in celsius
     temperature = response[0]
+    if temperature > 60:
+      temperature = 99
     return temperature
 
   def get_voltage(self, servo_id, model_name):
@@ -500,8 +528,9 @@ class SDKSerialWrapper:
     voltage = self.get_voltage(servo_id, model_name)
     temperature = self.get_temperature(servo_id, model_name)
     moving = self.get_moving(servo_id, model_name)
+    max_angle = motor_info[str(servo_id)]['max_angle']
 
-    degree_position=self.raw_to_deg_switch[str(model_number)](model_number,position)
+    degree_position = self.raw_to_deg_switch[str(model_number)](model_number, goal, max_angle)
 
     # Return above in a container form
     return { 'timestamp': 0,
@@ -516,29 +545,39 @@ class SDKSerialWrapper:
              'moving': bool(moving) }
   
 
-  def raw_to_deg_pulse(self, model_number, raw_pos):
-    base_degree=DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088)*raw_pos
+  def raw_to_deg_pulse(self, model_number, raw_pos, max_angle):
+    base_degree = DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088) * raw_pos
     if base_degree < 0:
-      base_degree=-base_degree
-    elif base_degree > 0:
-      base_degree=360-base_degree
+      base_degree += 360
     return base_degree
-  
-  def deg_to_raw_pulse(self, model_number, deg_pos):
-    if deg_pos > 180:
-      deg_pos=360-deg_pos
-    else:
-      deg_pos=-deg_pos
-    return deg_pos/DXL_MODEL_TO_PARAMS[model_number].get('pulse_const',.088)
-  
-  def raw_to_deg_static(self, model_number, raw_pos):
-    return raw_pos * .088
 
-  def deg_to_raw_static(self, model_number, deg_pos):
-    return deg_pos / .088  
+  
+  def deg_to_raw_pulse(self, model_number, deg_pos, max_angle):
+    if deg_pos > 180:
+      deg_pos -= 360
+    degree_position = deg_pos / DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088)
+    return degree_position
+  
+  def raw_to_deg_static(self, model_number, raw_pos, max_angle):
+    base_degree = DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088) * raw_pos
+    if base_degree <= 180:
+      reverse_position = max_angle / 2
+    else:
+      reverse_position = -(max_angle / 2)
+    reverse_position *= DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088)
+    return base_degree + reverse_position
+
+  def deg_to_raw_static(self, model_number, deg_pos, max_angle):
+    if deg_pos <= 180:
+      reverse_position = max_angle / 2
+    else:
+      reverse_position = -(max_angle / 2)
+    degree_position = deg_pos / DXL_MODEL_TO_PARAMS[model_number].get('pulse_const', .088)
+    return degree_position + reverse_position 
   
   # TODO: look into if we need this function and below classes for error handling,
   #       and if so, how to implement them properly without serial calls.
+  """
   def exception_on_error(self, error_code, servo_id, command_failed):
         global exception
         exception = None
@@ -569,20 +608,7 @@ class SDKSerialWrapper:
         if not error_code & DXL_INSTRUCTION_ERROR == 0:
             msg = 'Instruction Error ' + ex_message
             exception = NonfatalErrorCodeError(msg, error_code)
-
-
-  def pos_rad_to_raw(self, pos_rad, min_angle, max_angle, initial_position_raw, flipped, encoder_ticks_per_radian):
-    if pos_rad < min_angle: 
-      pos_rad = min_angle
-    elif pos_rad > max_angle: 
-      pos_rad = max_angle
-    return self.rad_to_raw(pos_rad, initial_position_raw, flipped, encoder_ticks_per_radian)
-
-
-  def rad_to_raw(self, angle, initial_position_raw, flipped, encoder_ticks_per_radian):
-    """ angle is in radians """
-    angle_raw = angle * encoder_ticks_per_radian
-    return int(round(initial_position_raw - angle_raw if flipped else initial_position_raw + angle_raw))
+  """
 
 
 class FatalErrorCodeError(Exception):

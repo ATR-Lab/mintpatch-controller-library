@@ -10,10 +10,12 @@ from threading import Thread
 from collections import defaultdict
 
 # Dynamixel Messages import for JointState, DynamixelState, MotorStateList, and MotorState
+"""
 from sensor_msgs.msg import JointState
 from dynamixel_msgs.msg import JointState as DynamixelState
 from dynamixel_msgs.msg import MotorStateList
 from dynamixel_msgs.msg import MotorState
+"""
 
 # Port and Packet Handler imports
 import dynamixel_sdk.port_handler as port_h
@@ -24,7 +26,7 @@ from dynomix_driver import sdk_serial_wrapper
 from dynomix_tools.dynamixel_control_table import MODEL_NUMBER_2_MOTOR_NAME
 from dynomix_tools import dynamixel_tools
 from dynomix_driver import sdk_serial_wrapper
-from dynomix_driver.dynamixel_const import *
+from dynomix_driver.dyn_const import *
 
 # Leave here for debugging
   # import roslib
@@ -82,14 +84,14 @@ class DynomixSerialProxy():
 
     self.actual_rate        = update_rate 
     self.error_counts       = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
-    self.current_state      = MotorStateList()
+    # self.current_state      = MotorStateList()
     self.num_ping_retries   = 5
     self.dynotools          = dynamixel_tools.DynamixelTools()
     self.sdk_io             = sdk_serial_wrapper.SDKSerialWrapper(port_name, baud_rate)
     self.angles             = {}
 
     # Start to publish motor states
-    self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size = 1)
+    # self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList, queue_size = 1)
 
 
   def connect(self):
@@ -235,7 +237,9 @@ class DynomixSerialProxy():
         # Fill Motor Parameters
         self.__fill_motor_parameters(motor_id, model_number[0])
         counts[model_number[0]] += 1
-        self.motor_info[str(motor_id)] = {"model_number": model_number[0]} # IRVIN
+        self.motor_info[str(motor_id)] = {"model_number": model_number[0],
+                                          "max_angle": self.motor_static_info[motor_id]['max_angle']} # IRVIN
+
         break
     
     # If any errors happen, remove the motor from the list
@@ -266,6 +270,7 @@ class DynomixSerialProxy():
 
 
   # For ROS Implementation
+  """
   def __update_motor_states(self):
     num_events = 50
     rates = deque([float(self.update_rate)]*num_events, maxlen=num_events)
@@ -299,7 +304,7 @@ class DynomixSerialProxy():
         last_time = current_time
           
       rate.sleep()
-
+  """
 
   # TODO: Get these working without calling for serial proxy
   def set_goal_position(self, servo_id, goal_position):
@@ -317,4 +322,4 @@ if __name__ == '__main__':
     serial_proxy = DynomixSerialProxy()
     serial_proxy.connect()
     serial_proxy.disconnect()
-  except rospy.ROSInterruption: pass
+  except rospy.ROSInterruptException: pass

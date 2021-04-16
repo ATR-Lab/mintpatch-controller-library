@@ -30,7 +30,6 @@ class EmulatedMotor:
     def changeName(self, new_name):
         self.name=new_name
     def set_goal_speed(self, new_speed):
-        """
         if new_speed==0:
             self.goal_speed=0
             self.speed=0
@@ -40,8 +39,6 @@ class EmulatedMotor:
             self.start_time=time.time()
             self.moving=True
             self.last_check=self.start_time
-        """
-        
     def check_while_running(self):
         moment=time.time()
         tchange=moment-self.start_time

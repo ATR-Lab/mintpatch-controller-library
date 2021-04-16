@@ -24,17 +24,6 @@ class DynamixelTools:
       return (float(position_val) - model_info.val_zero_radian_position) * model_info.min_radian / (float(model_info.val_min_radian_position) - model_info.val_zero_radian_position)
 
 
-  def convertPosition2Radian(self, position_val, min_position, max_position, min_radian, max_radian):
-    """
-    Converts a position value of a given actuator to its radian representation
-    """
-    zero_position = (max_position + min_position) / 2
-
-    if position_val > zero_position:
-      return ((float(position_val) - zero_position) * max_radian / (float(max_position) - zero_position))
-    elif position_val < zero_position:
-      return ((float(position_val) - zero_position) * min_radian / (float(min_position) - zero_position))
-
   def convertRadian2Position(self, radian_val, min_position, max_position, min_radian, max_radian):
     """
     Converts a radian value to a position representation given the desired min and max position and radian values
