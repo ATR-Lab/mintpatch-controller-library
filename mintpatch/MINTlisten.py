@@ -103,7 +103,7 @@ def listen():
         
 
     # END LOOP
-    print("Thank you for using MintPatch!")
+    #rint("Thank you for using MintPatch!")
     listener.disconnect("tcp://127.0.0.1:4242")
 
 if __name__ == '__main__':
