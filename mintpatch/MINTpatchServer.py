@@ -31,7 +31,7 @@ class ServoLog:
         
         # Prints the info out in one line as a formatted string.
         # Every element is seperated by a space.
-        return '{id} {state} {voltage} {temp} {pos} {speed}'.format(id = self.output_name, 
+        return '\"id\": {id}, \"state\": {state}, \"voltage\": {voltage}, \"temp\": {temp}, \"position\": {pos}, \"speed\": {speed}'.format(id = self.output_name, 
         state = state, voltage = idict["voltage"], temp = idict["temperature"], 
         pos = idict["position"], speed = idict["speed"])
 
@@ -158,9 +158,9 @@ class ServerManager:
             self.update_motor(rmotor)
 
         #Returns a string with all motor info
-        motor_info=''
+        motor_info=[]
         for servo_log in self.log_list:
-            motor_info=motor_info+self.log_list[servo_log].print_servo()+'\n'
+            motor_info.append(str(self.log_list[servo_log].print_servo()))
         
         return motor_info
 
