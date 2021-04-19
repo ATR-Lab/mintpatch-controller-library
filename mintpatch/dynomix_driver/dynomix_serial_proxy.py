@@ -136,6 +136,7 @@ class DynomixSerialProxy():
     voltages = self.sdk_io.get_voltage_limits(motor_id, model_name)
     
     # ROS Parameters Setup
+    """
     rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
     rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
     rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
@@ -160,25 +161,7 @@ class DynomixSerialProxy():
     rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
     rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
     rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
-
-    # Get Parameters for pos_to_raw
-    self.flipped = angles['min'] > angles['max']
-    self.encoder_resolution = encoder_resolution
-    self.range_degrees = range_degrees
-    self.range_radians = range_radians
-    self.encoder_ticks_per_degree = encoder_resolution / range_degrees
-    self.encoder_ticks_per_radian = encoder_resolution / range_radians
-    self.degrees_per_encoder_tick = range_degrees / encoder_resolution
-    self.radians_per_encoder_tick = range_radians / encoder_resolution
-    self.initial_position_raw = self.sdk_io.get_position(motor_id, model_name)
-
-    # Flipped case
-    if self.flipped:
-      self.min_angle = (self.initial_position_raw - angles['min']) * self.radians_per_encoder_tick
-      self.max_angle = (self.initial_position_raw - angles['max']) * self.radians_per_encoder_tick
-    else:
-      self.min_angle = (angles['min'] - self.initial_position_raw) * self.radians_per_encoder_tick
-      self.max_angle = (angles['max']- self.initial_position_raw) * self.radians_per_encoder_tick
+    """
 
     # keep some parameters around for diagnostics
     self.motor_static_info[motor_id] = {}
@@ -238,7 +221,8 @@ class DynomixSerialProxy():
         self.__fill_motor_parameters(motor_id, model_number[0])
         counts[model_number[0]] += 1
         self.motor_info[str(motor_id)] = {"model_number": model_number[0],
-                                          "max_angle": self.motor_static_info[motor_id]['max_angle']} # IRVIN
+                                          "max_angle": self.motor_static_info[motor_id]['max_angle'],
+                                          "min_angle": self.motor_static_info[motor_id]['min_angle']} # IRVIN
 
         break
     
