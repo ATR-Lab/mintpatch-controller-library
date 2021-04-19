@@ -313,6 +313,20 @@ class SDKSerialWrapper:
     raw_response_max = self.read(servo_id, register_angle_max, register_angle_max_length)
     angle_max = raw_response_max[0]
 
+    if angle_min > angle_max:
+      result = self.packet_handler.readTxRx(self.port_handler, servo_id, register_angle_min, register_angle_min_length)
+      response_min = result[0]
+      if response_min[3] >= 1:
+        angle_min_ref = [255, 255, 255, 255]
+        response_min[0] = angle_min_ref[0] - response_min[0]
+        response_min[1] = angle_min_ref[1] - response_min[1]
+        response_min[2] = angle_min_ref[2] - response_min[2]
+        response_min[3] = angle_min_ref[3] - response_min[3]
+        angle_min = (response_min[0] + 1) + (response_min[1] << 8) + (response_min[2] << 16) + (response_min[3] << 32)
+        angle_min *= -1
+      else:
+        angle_min = response_min[0] + (response_min[1] << 8) + (response_min[2] << 16) + (response_min[3] << 32)
+
     # return the data in a dictionary
     return {'min': angle_min, 'max': angle_max}
   
@@ -347,15 +361,35 @@ class SDKSerialWrapper:
     register_goal_position = self.dynotools.getRegisterAddressByModel(model_name, "goal_position")
     register_goal_position_length = self.dynotools.getAddressSizeByModel(model_name, "goal_position")
 
-    # Read using present position
-    raw_response = self.read(servo_id, register_goal_position, register_goal_position_length)
-    position = raw_response[0]
+    result = self.packet_handler.readTxRx(self.port_handler, servo_id, register_goal_position, register_goal_position_length)
+    response = result[0]
+
+    try:
+      if register_goal_position_length == 2:
+        position = response[0] + (response[1] << 8)
+
+      elif register_goal_position_length == 4:      
+        if response[3] >= 1:
+          goal_position_ref = [255, 255, 255, 255]
+          response[0] = goal_position_ref[0] - response[0]
+          response[1] = goal_position_ref[1] - response[1]
+          response[2] = goal_position_ref[2] - response[2]
+          response[3] = goal_position_ref[3] - response[3]
+          position = (response[0] + 1) + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+          position *= -1
+      
+        else:
+          position = response[0] + (response[1] << 8) + (response[2] << 16) + (response[3] << 32)
+    
+    except:
+      # Read using present position
+      raw_response = self.read(servo_id, register_goal_position, register_goal_position_length)
+      position = raw_response[0]
 
     # TODO: Either implement or remove error handling
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present position')
-
-    print("DEBUG OUTPUT FROM " + str(servo_id) + " OF GOAL POSITION: " + str(position))
+      
     return position
 
 
@@ -374,8 +408,6 @@ class SDKSerialWrapper:
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present position')
     
-    print("DEBUG OUTPUT OF " + str(servo_id) + " FOR PRESENT POSITION: " + str(position))
-    
     return position
 
   def get_speed(self, servo_id, model_name):
@@ -392,8 +424,6 @@ class SDKSerialWrapper:
     # if response:
       # self.exception_on_error(response[4], servo_id, 'fetching present speed')
 
-    print("DEBUG OUTPUT OF " + str(servo_id) + " FOR PRESENT VELOCITY: " + str(speed))
-
     return speed
 
   def get_temperature(self, servo_id, model_name):
@@ -405,6 +435,11 @@ class SDKSerialWrapper:
     # Read using present position
     raw_response = self.read(servo_id, register_present_temperature, register_present_temperature_length)
     temperature = raw_response[0]
+
+    if temperature > 99:
+      result = self.packet_handler.readTxRx(self.port_handler, servo_id, register_present_temperature, register_present_temperature_length)
+      response = result[0]
+      temperature = response[0]
 
     return temperature
 
@@ -462,13 +497,13 @@ class SDKSerialWrapper:
     min_angle = motor_info[str(servo_id)]['min_angle']
 
     # If this is true, registers are outputting the incorrect information
-    if max_angle < goal:
+    if max_angle < goal or min_angle > goal:
       # Set a do / while loop function for isAccurate
       isAccurate = False
       # While the current position (goal angle) is incorrect, execute the following:
       while isAccurate == False:
         # If this is true, the correct position is at the current position register
-        if max_angle > position and position > min_angle:
+        if max_angle >= position and position >= min_angle:
           # Set a reference angle
           ref_angle = self.raw_to_deg_switch[str(model_number)](model_number, position, max_angle)
           # Set goal position to reference angle
@@ -478,22 +513,21 @@ class SDKSerialWrapper:
           # Translate into degree value
           degree_goal = self.raw_to_deg_switch[str(model_number)](model_number, goal, max_angle)
           # If degree goal and the reference angle are the same, or that goal is between min and max
-          if degree_goal == (ref_angle + 1) or (max_angle > goal and goal > min_angle):
+          if degree_goal == (ref_angle + 1) or (max_angle >= goal and goal >= min_angle):
             # The angle is accurate
             isAccurate = True
         # If this is true, the correct position is at the velocity / speed register
-        elif max_angle > speed and speed > min_angle:
+        elif max_angle >= speed and speed >= min_angle:
           ref_angle = self.raw_to_deg_switch[str(model_number)](model_number, speed, max_angle)
           self.set_goal_position(servo_id, ref_angle, motor_info)
           goal = self.get_goal(servo_id, model_name)
           degree_goal = self.raw_to_deg_switch[str(model_number)](model_number, goal, max_angle)
-          if degree_goal == (ref_angle + 1) or (max_angle > goal and goal > min_angle):
+          if degree_goal == (ref_angle + 1) or (max_angle >= goal and goal >= min_angle):
             isAccurate = True
         # If none are true, then just get another position call and see if things changed
         else:
-          self.set_goal_position(servo_id, goal, motor_info)
           goal = self.get_goal(servo_id, model_name)
-          if max_angle > goal:
+          if max_angle >= goal and min_angle <= goal:
             isAccurate = True
     
     degree_position = self.raw_to_deg_switch[str(model_number)](model_number, goal, max_angle)
